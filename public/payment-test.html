@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختبار HyperPay - Car Wash</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .payment-info {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: right;
+        }
+
+        .amount {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+
+        .test-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #856404;
+        }
+
+        #payButton {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        #payButton:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(76, 175, 80, 0.3);
+        }
+
+        #payButton:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        #payment-form {
+            margin-top: 20px;
+        }
+
+        .loading {
+            display: none;
+            color: #666;
+            font-style: italic;
+        }
+
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #721c24;
+            display: none;
+        }
+
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #155724;
+            display: none;
+        }
+
+        .test-cards {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 12px;
+            text-align: right;
+        }
+
+        .test-cards h4 {
+            margin: 0 0 10px 0;
+            color: #1976d2;
+        }
+
+        .test-cards ul {
+            margin: 0;
+            padding-right: 20px;
+            list-style: none;
+        }
+
+        .test-cards li {
+            margin-bottom: 5px;
+            font-family: monospace;
+        }
+    </style>
+
+    <!-- 1. إضافة كود wpwlOptions (مهم جدًا لـ 3D Secure) -->
+    <script type="text/javascript">
+        var wpwlOptions = {
+            paymentTarget: "_top",
+            style: "card",
+            brandDetection: true,
+            brandDetectionPriority: ["MADA", "VISA", "MASTER"],
+            locale: "ar",
+            onReady: function() {
+                console.log("✅ HyperPay payment form ready");
+            },
+            onError: function(error) {
+                console.error("❌ HyperPay payment error:", error);
+                showError("خطأ في نموذج الدفع: " + error.message);
+            },
+            onBeforeSubmit: function() {
+                console.log("🔄 Payment submission started");
+                showLoading("جاري معالجة الدفع...");
+                return true;
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div class="container">
+        <div class="logo">🚗</div>
+        <h1>غسيل السيارات</h1>
+        <p class="subtitle">اختبار بوابة الدفع HyperPay</p>
+
+        <div class="payment-info">
+            <div class="amount">92.00 ريال</div>
+            <div>باقة غسيل كاملة</div>
+        </div>
+
+        <div class="test-info">
+            <strong>🧪 بيئة الاختبار:</strong><br>
+            هذه صفحة اختبار لبوابة الدفع. لن يتم خصم أي مبالغ حقيقية.
+        </div>
+
+        <button id="payButton" onclick="startPayment()">
+            ادفع الآن
+        </button>
+
+        <div id="loading" class="loading">
+            جاري تجهيز الدفع...
+        </div>
+
+        <div id="error" class="error"></div>
+        <div id="success" class="success"></div>
+
+        <!-- 3. سيتم حقن نموذج الدفع هنا -->
+        <div id="payment-form"></div>
+
+        <div class="test-cards">
+            <h4>🧪 بطاقات الاختبار:</h4>
+            <ul>
+                <li><strong>VISA:</strong> 4440000009900010</li>
+                <li><strong>MADA:</strong> 5360230159427034</li>
+                <li><strong>CVV:</strong> 100 (VISA) / 850 (MADA)</li>
+                <li><strong>Expiry:</strong> 01/39 (VISA) / 11/25 (MADA)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const payButton = document.getElementById('payButton');
+        const paymentFormContainer = document.getElementById('payment-form');
+        const loadingDiv = document.getElementById('loading');
+        const errorDiv = document.getElementById('error');
+        const successDiv = document.getElementById('success');
+
+        function showLoading(message) {
+            loadingDiv.textContent = message;
+            loadingDiv.style.display = 'block';
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+        }
+
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            loadingDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+        }
+
+        function showSuccess(message) {
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            loadingDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+        }
+
+        async function startPayment() {
+            payButton.disabled = true;
+            payButton.textContent = 'جاري التجهيز...';
+            showLoading('جاري تجهيز الدفع...');
+
+            try {
+                console.log('🚀 Starting payment process...');
+
+                // 2. طلب checkoutId من الخادم الخاص بك
+                const response = await fetch('/api/hyperpay/prepare-checkout', { 
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        amount: '92.00',
+                        currency: 'SAR',
+                        paymentBrand: 'MADA',
+                        customerEmail: 'test@carwash.com',
+                        customerName: 'أحمد محمد',
+                        billingStreet: 'شارع الملك فهد',
+                        billingCity: 'الرياض',
+                        billingState: 'المنطقة الوسطى',
+                        billingCountry: 'SA'
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'فشل في تجهيز الدفع');
+                }
+
+                const checkoutData = await response.json();
+                const checkoutId = checkoutData.checkoutId;
+
+                if (!checkoutId) {
+                    throw new Error('لم يتم استلام checkoutId');
+                }
+
+                console.log('✅ Checkout prepared successfully:', checkoutId);
+
+                // 4. إنشاء نموذج الدفع باستخدام checkoutId
+                const form = document.createElement('form');
+                // هذا هو الرابط الذي سيعود إليه المستخدم بعد الدفع
+                form.action = "/api/hyperpay/payment-callback"; 
+                form.classList.add('paymentWidgets');
+                form.setAttribute('data-brands', 'VISA MASTER AMEX MADA');
+
+                // 5. إضافة سكربت هايبر باي إلى الصفحة
+                const script = document.createElement('script');
+                script.src = `https://eu-test.oppwa.com/v1/paymentWidgets.js?checkoutId=${checkoutId}`;
+                
+                // إخفاء زر الدفع وإظهار النموذج
+                payButton.style.display = 'none';
+                paymentFormContainer.appendChild(form);
+                document.body.appendChild(script);
+
+                showSuccess('تم تجهيز الدفع بنجاح! أدخل بيانات البطاقة أدناه.');
+
+            } catch (error) {
+                console.error('❌ Error:', error);
+                showError(`حدث خطأ: ${error.message}`);
+                payButton.disabled = false;
+                payButton.textContent = 'ادفع الآن';
+            }
+        }
+
+        // إضافة مستمع للأحداث للتعامل مع النتائج
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'payment_result') {
+                console.log('Payment result received:', event.data);
+                if (event.data.success) {
+                    showSuccess('تم الدفع بنجاح!');
+                } else {
+                    showError('فشل في الدفع: ' + event.data.message);
+                }
+            }
+        });
+    </script>
+
+</body>
+</html>
