@@ -59,14 +59,6 @@ const makeHyperPayRequest = (path, data = {}, method = 'POST') => {
 exports.prepareCheckout = async (req, res) => {
     try {
         const { amount, currency = 'SAR', paymentType = 'DB', customer, billing } = req.body;
-        console.log(req.body)
-        console.log('📤 Preparing checkout with HyperPay:', {
-            amount,
-            currency,
-            paymentType,
-            customer: customer ? 'provided' : 'not provided',
-            billing: billing ? 'provided' : 'not provided'
-        });
 
         const payload = {
             entityId: HYPERPAY_CONFIG.ENTITY_ID,
@@ -140,7 +132,7 @@ exports.createCheckoutForm = async (req, res) => {
         const { checkoutId } = req.params;
         const { userId } = req.query; // Get userId from query parameters
         console.log('userId', userId)
-        const shopperResult = `http://localhost:5000/api/hyperpay/payment-result${userId ? '?userId=' + userId : ''}`
+        const shopperResult = `https://carwash-backend-production.up.railway.app/api/hyperpay/payment-result${userId ? '?userId=' + userId : ''}`
 
         if (!checkoutId) {
             return res.status(400).json({
