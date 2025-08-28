@@ -53,7 +53,9 @@ exports.prepareCheckout = async (req, res) => {
             'billing.city': billingCity,
             'billing.state': billingState,
             'billing.country': billingCountry,
-            'testMode': 'EXTERNAL' // للاختبار فقط
+            'testMode': 'EXTERNAL',
+            "&customParameters[3DS2_enrolled]": true,
+            "&customParameters[3DS2_flow]": 'challenge',
         };
 
         console.log("🚀 Preparing checkout with data:", paymentData);
