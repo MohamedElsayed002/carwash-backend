@@ -49,6 +49,8 @@ router.use("/user-package", require("../modules/package/userPackage.routes.js"))
 // Route aliases for Postman collections compatibility
 router.use("/user-packages", require("../modules/package/userPackage.routes.js")); // Frontend expects /user-packages
 
+
+
 // Washing Places Routes
 router.use("/washing-places", require("../modules/washingPlace/washingPlace.routes.js"));
 

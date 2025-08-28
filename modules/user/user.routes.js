@@ -61,6 +61,19 @@ router.post('/scan-qr-code', auth, userController.scanQRCode);
 router.get('/package-status', auth, userController.getPackageStatus);
 
 // ========================================
+// PAYMENT STATUS ROUTES
+// ========================================
+
+// Get user's payment status
+router.get('/payment-status', auth, userController.getPaymentStatus);
+
+// Update user's payment status
+router.post('/update-payment-status', auth, userController.updatePaymentStatus);
+
+// Handle payment success
+router.post('/payment-success', auth, userController.handlePaymentSuccess);
+
+// ========================================
 // ADMIN USER MANAGEMENT ROUTES
 // ========================================
 

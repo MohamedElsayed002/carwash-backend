@@ -1,12 +1,13 @@
 const axios = require('axios');
 const crypto = require('crypto');
+const qs = require('qs');
 
 // --- بيانات الاعتماد الحقيقية من HyperPay ---
 const HYPERPAY_CONFIG = {
     baseUrl: process.env.HYPERPAY_BASE_URL || "https://eu-test.oppwa.com",
     // Entity ID يدعم SAR و VISA/MADA
-    entityId: process.env.HYPERPAY_ENTITY_ID || "8a8294174d0595bb014d05d829cb01cd",
-    accessToken: `Bearer ${process.env.HYPERPAY_ACCESS_TOKEN || "OGE4Mjk0MTc0ZDA1OTViYjAxNGQwNWQ4MjllNzAxZDF8bk49a3NvQ3ROZjJacW9nOWYla0o="}`,
+    entityId: process.env.HYPERPAY_ENTITY_ID || "8ac7a4c897f92ba00198037be75705a7",
+    accessToken: `Bearer ${process.env.HYPERPAY_ACCESS_TOKEN || "OGFjN2E0Yzg5N2Y5MmJhMDAxOTgwMzdiOTFlYzA1YTN8NWEjekt5d00yUFJiYWVnakthNDU="}`,
     userId: process.env.HYPERPAY_USER_ID || "joudmkhateb@gmail.com",
     password: process.env.HYPERPAY_PASSWORD || "Jmk6060217PP"
 };
@@ -18,9 +19,9 @@ const HYPERPAY_CONFIG = {
 exports.prepareCheckout = async (req, res) => {
     try {
         // في تطبيق حقيقي، ستحصل على هذه البيانات من الطلب (req.body)
-        const { 
-            amount = "92.00", 
-            currency = "SAR", 
+        const {
+            amount = "92.00",
+            currency = "SAR",
             paymentBrand = "MADA",
             customerEmail = "customer@example.com",
             customerName = "أحمد محمد",
@@ -53,15 +54,15 @@ exports.prepareCheckout = async (req, res) => {
             'billing.city': billingCity,
             'billing.state': billingState,
             'billing.country': billingCountry,
-            'testMode': 'EXTERNAL',
-            "&customParameters[3DS2_enrolled]": true,
-            "&customParameters[3DS2_flow]": 'challenge',
+            // 'testMode': 'EXTERNAL',
+            "customParameters[3DS2_enrolled]": true,
+            "customParameters[3DS2_flow]": "challenge"
         };
 
         console.log("🚀 Preparing checkout with data:", paymentData);
 
-        const response = await axios.post(`${HYPERPAY_CONFIG.baseUrl}/v1/checkouts`, paymentData, {
-            headers: { 
+        const response = await axios.post(`${HYPERPAY_CONFIG.baseUrl}/v1/checkouts`, qs.stringify(paymentData), {
+            headers: {
                 'Authorization': HYPERPAY_CONFIG.accessToken,
                 'Content-Type': 'application/x-www-form-urlencoded'
             }
@@ -98,14 +99,14 @@ exports.prepareCheckout = async (req, res) => {
             // خطأ حدث أثناء إعداد الطلب
             console.error("Error setting up the request:", error.message);
         }
-        
+
         const errorData = error.response ? error.response.data : error.message;
         console.error("❌ Error preparing checkout:", errorData);
-        
-        res.status(500).json({ 
+
+        res.status(500).json({
             success: false,
-            error: "فشل في تجهيز الدفع", 
-            details: errorData 
+            error: "فشل في تجهيز الدفع",
+            details: errorData
         });
     }
 };
@@ -140,7 +141,7 @@ exports.handlePaymentCallback = async (req, res) => {
         if (isSuccess) {
             // --- الدفع ناجح ---
             console.log(`✅ SUCCESS: Payment for checkoutId ${checkoutId} is confirmed. Code: ${paymentStatus.result.code}`);
-            
+
             // TODO: تحديث قاعدة البيانات - قم بتغيير حالة الطلب إلى "مدفوع"
             // await database.orders.update({ id: orderId }, { status: 'PAID' });
 
@@ -183,7 +184,7 @@ exports.handlePaymentCallback = async (req, res) => {
 
     } catch (error) {
         console.error("❌ Error during payment verification:", error.message);
-        
+
         res.status(500).json({
             success: false,
             error: "حدث خطأ أثناء التحقق من حالة الدفع",
@@ -202,8 +203,8 @@ async function checkPaymentStatus(resourcePath) {
     console.log("🔍 Checking payment status at URL:", url);
 
     const response = await axios.get(url, {
-        headers: { 
-            'Authorization': HYPERPAY_CONFIG.accessToken 
+        headers: {
+            'Authorization': HYPERPAY_CONFIG.accessToken
         }
     });
 
@@ -296,11 +297,11 @@ exports.checkPaymentStatus = async (req, res) => {
         const pathToCheck = resourcePath || `/v1/checkouts/${checkoutId}/payment`;
 
         const statusUrl = `${HYPERPAY_CONFIG.baseUrl}${pathToCheck}?entityId=${HYPERPAY_CONFIG.entityId}`;
-        
+
         console.log("🔗 Checking URL:", statusUrl);
 
         const response = await axios.get(statusUrl, {
-            headers: { 
+            headers: {
                 'Authorization': HYPERPAY_CONFIG.accessToken
             }
         });
@@ -336,7 +337,7 @@ exports.checkPaymentStatus = async (req, res) => {
         console.error("Error details:", error.response?.data || error.message);
         console.error("Error status:", error.response?.status);
         console.error("Error config:", error.config);
-        
+
         res.status(500).json({
             success: false,
             error: "Failed to check payment status",
@@ -366,8 +367,8 @@ exports.testConnection = async (req, res) => {
 
         console.log("Test Data:", testData);
 
-        const response = await axios.post(`${HYPERPAY_CONFIG.baseUrl}/v1/checkouts`, testData, {
-            headers: { 
+        const response = await axios.post(`${HYPERPAY_CONFIG.baseUrl}/v1/checkouts`, qs.stringify(testData), {
+            headers: {
                 'Authorization': HYPERPAY_CONFIG.accessToken,
                 'Content-Type': 'application/x-www-form-urlencoded'
             }
@@ -388,7 +389,7 @@ exports.testConnection = async (req, res) => {
 
     } catch (error) {
         console.error("❌ Connection test failed:", error.response?.data || error.message);
-        
+
         res.status(500).json({
             success: false,
             error: "HyperPay connection test failed",
@@ -399,5 +400,204 @@ exports.testConnection = async (req, res) => {
                 hasAccessToken: !!HYPERPAY_CONFIG.accessToken
             }
         });
+    }
+};
+
+/**
+ * إنشاء نموذج الدفع (Copy and Pay)
+ * يعرض نموذج الدفع للمستخدم
+ */
+exports.createCheckoutForm = async (req, res) => {
+    try {
+        const { checkoutId } = req.params;
+
+        console.log("🔗 Creating checkout form for:", checkoutId);
+
+        if (!checkoutId) {
+            return res.status(400).json({
+                success: false,
+                error: "معرف الدفع مطلوب"
+            });
+        }
+
+        // إنشاء HTML page مع نموذج الدفع
+        const htmlContent = `
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نموذج الدفع - HyperPay</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #059669;
+            margin: 0 0 10px 0;
+            font-size: 24px;
+        }
+        .header p {
+            color: #6b7280;
+            margin: 0;
+        }
+        .payment-form {
+            margin-top: 30px;
+        }
+        .wpwl-form {
+            max-width: 100% !important;
+        }
+        .wpwl-apple-pay-button {
+            font-size: 16px !important;
+            display: block !important;
+            width: 100% !important;
+            -webkit-appearance: -apple-pay-button;
+            -apple-pay-button-type: buy;
+        }
+        .wpwl-apple-pay-button {
+            -webkit-appearance: -apple-pay-button !important;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        .security-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 20px;
+            padding: 10px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 10px;
+            color: #166534;
+            font-size: 14px;
+        }
+    </style>
+    <script type="text/javascript" src="https://test.oppwa.com/v1/paymentWidgets.js?checkoutId=${checkoutId}"></script>
+    <script type="text/javascript" src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💳 نموذج الدفع الآمن</h1>
+            <p>أدخل بيانات بطاقتك الائتمانية لإتمام عملية الدفع</p>
+        </div>
+        
+        <div class="payment-form">
+            <form action="${process.env.BASE_URL || 'http://localhost:5000'}/api/hyperpay/payment-callback" class="paymentWidgets" data-brands="VISA MASTER MADA">
+                <div id="card-container"></div>
+                <button type="submit" class="wpwl-button wpwl-button-pay" style="background: #059669; border: none; padding: 15px; border-radius: 10px; color: white; font-size: 16px; font-weight: bold; width: 100%; margin-top: 20px;">
+                    💳 إتمام الدفع
+                </button>
+            </form>
+        </div>
+        
+        <div class="security-badge">
+            🔒 الدفع آمن ومشفر - HyperPay
+        </div>
+        
+        <div class="footer">
+            <p>جميع البيانات محمية ومشفرة</p>
+        </div>
+    </div>
+
+    <script>
+        var wpwlOptions = {
+            applePay: {
+                displayName: "Car Wash App",
+                total: { label: "CAR WASH APP" },
+                supportedNetworks: ["mada", "masterCard", "visa"],
+                merchantCapabilities: ["supports3DS", "supportsCredit", "supportsDebit"],
+                countryCode: "SA",
+                supportedCountries: ["SA"],
+                version: 3
+            },
+            locale: "ar",
+            brandDetection: true,
+            onReady: function() {
+                console.log("Payment form ready");
+            },
+            onError: function(error) {
+                console.error("Payment form error:", error);
+                alert("حدث خطأ في نموذج الدفع: " + error.message);
+            }
+        };
+
+        // Handle form submission
+        document.querySelector('.paymentWidgets').addEventListener('submit', function(e) {
+            // Let the form submit normally to the callback URL
+            console.log("Form submitted, redirecting to callback...");
+        });
+    </script>
+</body>
+</html>`;
+
+        res.setHeader('Content-Type', 'text/html');
+        res.send(htmlContent);
+
+    } catch (error) {
+        console.error("❌ Error creating checkout form:", error);
+        res.status(500).json({
+            success: false,
+            error: "فشل في إنشاء نموذج الدفع",
+            details: error.message
+        });
+    }
+};
+
+/**
+ * معالجة callback الدفع
+ */
+exports.paymentCallback = async (req, res) => {
+    try {
+        const { resourcePath, id: checkoutId } = req.query;
+
+        console.log("🔄 Payment callback received:", { checkoutId, resourcePath });
+
+        if (!resourcePath || !checkoutId) {
+            return res.status(400).json({
+                success: false,
+                error: "بيانات الدفع غير مكتملة"
+            });
+        }
+
+        // التحقق من حالة الدفع
+        const paymentStatus = await checkPaymentStatus(resourcePath);
+        const isSuccess = /^(000\.000\.|000\.100\.1|000\.[23]00\.)/.test(paymentStatus.result.code);
+
+        if (isSuccess) {
+            // Redirect to payment form page with success status
+            res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-form/${checkoutId}?status=success&checkoutId=${checkoutId}`);
+        } else {
+            // Redirect to payment form page with failed status
+            res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-form/${checkoutId}?status=failed&checkoutId=${checkoutId}`);
+        }
+
+    } catch (error) {
+        console.error("❌ Error in payment callback:", error);
+        res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-result?status=error`);
     }
 };

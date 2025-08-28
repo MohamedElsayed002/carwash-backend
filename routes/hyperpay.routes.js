@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const hyperpayController = require('../modules/hyperpay/hyperpay.controller');
+const hyperpayCopyandpayController = require('../modules/hyperpay/hyperpay-copyandpay.controller');
+const auth = require('../middleware/auth');
 
 // ----------------------------------------------------------------
 // --- المسارات الأساسية لعملية الدفع (Production Flow) ---
@@ -8,7 +10,14 @@ const hyperpayController = require('../modules/hyperpay/hyperpay.controller');
 
 // الخطوة 1: الواجهة الأمامية تطلب من الخادم تجهيز الدفع.
 // الخادم يتصل بهايبر باي ويعيد checkoutId.
-router.post('/prepare-checkout', hyperpayController.prepareCheckout);
+// router.post('/prepare-checkout', hyperpayController.prepareCheckout);
+router.post('/prepare-checkout-copyandpay', auth, hyperpayCopyandpayController.prepareCheckout);
+router.get('/create-checkout-form/:checkoutId', hyperpayCopyandpayController.createCheckoutForm);
+router.get('/payment-result', hyperpayCopyandpayController.paymentResult)
+router.get('/check-status', auth, hyperpayCopyandpayController.checkStatus);
+router.post('/payment-success', auth, hyperpayCopyandpayController.handlePaymentSuccess);
+router.post('/create-fresh-checkout', auth, hyperpayCopyandpayController.createFreshCheckout);
+router.get('/payment-callback', hyperpayCopyandpayController.paymentCallback);
 
 // مسار بديل للتوافق مع الفرونت إند
 router.post('/prepare', hyperpayController.prepareCheckout);
@@ -18,7 +27,7 @@ router.post('/prepare', hyperpayController.prepareCheckout);
 
 // الخطوة 3: المستخدم يعود من بوابة الدفع إلى هذا الرابط.
 // هذا المسار يستقبل المستخدم ويعرض له صفحة مؤقتة، بينما يبدأ التحقق في الخلفية.
-router.get('/payment-callback', hyperpayController.handlePaymentCallback);
+// router.get('/payment-callback', hyperpayController.handlePaymentCallback);
 
 // ----------------------------------------------------------------
 // --- مسارات للمراقبة والخدمات المساعدة ---
@@ -30,8 +39,8 @@ router.post('/webhook-listener', hyperpayController.verifyPaymentFromWebhook);
 
 // فحص صحة الخدمة (Health Check)
 router.get('/health', (req, res) => {
-    res.status(200).json({ 
-        status: 'OK', 
+    res.status(200).json({
+        status: 'OK',
         message: 'HyperPay service is running',
         timestamp: new Date().toISOString(),
         environment: process.env.NODE_ENV || 'development'

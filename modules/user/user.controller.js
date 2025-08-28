@@ -1084,4 +1084,120 @@ exports.getPackageStatus = async (req, res) => {
   }
 };
 
+// GET /api/user/payment-status (Get user's payment status)
+exports.getPaymentStatus = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('-password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        isPaid: user.isPaid || false,
+        userId: user._id,
+        userName: user.name
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+// POST /api/user/update-payment-status (Update user's payment status)
+exports.updatePaymentStatus = async (req, res) => {
+  try {
+    const { isPaid } = req.body;
+
+    if (typeof isPaid !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: 'isPaid must be a boolean value'
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { isPaid },
+      { new: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Payment status updated to ${isPaid ? 'paid' : 'unpaid'}`,
+      data: {
+        isPaid: user.isPaid,
+        userId: user._id,
+        userName: user.name
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+// POST /api/user/payment-success (Handle payment success)
+exports.handlePaymentSuccess = async (req, res) => {
+  try {
+    const { checkoutId } = req.body;
+
+    if (!checkoutId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Checkout ID is required'
+      });
+    }
+
+    // Update user's isPaid status to true
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { isPaid: true },
+      { new: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    console.log(`✅ Updated user ${req.user._id} isPaid status to true after payment success`);
+
+    res.json({
+      success: true,
+      message: 'Payment success recorded',
+      data: {
+        isPaid: user.isPaid,
+        userId: user._id,
+        userName: user.name,
+        checkoutId
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
 

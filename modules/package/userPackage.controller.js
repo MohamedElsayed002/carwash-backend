@@ -274,6 +274,14 @@ exports.purchasePackage = async (req, res) => {
     await userPackage.save();
     await userPackage.populate('package');
 
+    // Update user's isPaid status to true when package is purchased
+    try {
+      await User.findByIdAndUpdate(req.user._id, { isPaid: true });
+      console.log(`✅ Updated user ${req.user._id} isPaid status to true after package purchase`);
+    } catch (userUpdateError) {
+      console.error('❌ Error updating user isPaid status after package purchase:', userUpdateError);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Package purchased successfully',

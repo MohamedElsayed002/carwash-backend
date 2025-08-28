@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: ['owner', 'user', 'admin'], default: 'user' },
   referredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   notifications: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Notification' }],
+  isPaid: { type: Boolean, default: false }, // Payment status flag
   package: {
     _id: { type: mongoose.Schema.Types.ObjectId },
     name: { type: String },

@@ -2,8 +2,12 @@ const express = require('express');
 const router = express.Router();
 const hyperpayController = require('./hyperpay.controller');
 
+
+router.get('/',(req,res) => {
+    res.send('HyperPay API is running');
+})
 // ✅ إنشاء checkout session
-router.post('/create-checkout', hyperpayController.createCheckout);
+router.post('/create-checkout', hyperpayController.prepareCheckout);
 
 // ✅ التحقق من حالة الدفع
 router.get('/payment-status/:checkoutId', hyperpayController.getPaymentStatus);
