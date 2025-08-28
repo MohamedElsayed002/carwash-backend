@@ -4,7 +4,7 @@ const qs = require('qs');
 
 // HyperPay Configuration
 const HYPERPAY_CONFIG = {
-    BASE_URL: process.env.HYPERPAY_BASE_URL || 'https://eu-test.oppwa.com',
+    BASE_URL: process.env.HYPERPAY_BASE_URL || 'https://eu-prod.oppwa.com',
     ACCESS_TOKEN: process.env.HYPERPAY_ACCESS_TOKEN || 'OGFjN2E0Yzg5N2Y5MmJhMDAxOTgwMzdiOTFlYzA1YTN8NWEjekt5d00yUFJiYWVnakthNDU',
     ENTITY_ID: '8ac7a4c897f92ba00198037be75705a7',
     TEST_MODE: process.env.NODE_ENV !== 'production'
@@ -233,7 +233,7 @@ exports.createCheckoutForm = async (req, res) => {
             font-size: 14px;
         }
     </style>
-    <script type="text/javascript" src="https://eu-test.oppwa.com/v1/paymentWidgets.js?checkoutId=${checkoutId}"></script>
+    <script type="text/javascript" src="https://eu-prod.oppwa.com/v1/paymentWidgets.js?checkoutId=${checkoutId}"></script>
     <script type="text/javascript" src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script>
 </head>
 <body>
