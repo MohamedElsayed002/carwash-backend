@@ -1,13 +1,13 @@
 const axios = require('axios');
 const querystring = require('querystring');
 const qs = require('qs');
+const crypto = require('crypto');
 
-// HyperPay Configuration
+// HyperPay Configuration - PRODUCTION
 const HYPERPAY_CONFIG = {
-    BASE_URL: process.env.HYPERPAY_BASE_URL || 'https://eu-prod.oppwa.com',
-    ACCESS_TOKEN: process.env.HYPERPAY_ACCESS_TOKEN || 'OGFjN2E0Yzg5N2Y5MmJhMDAxOTgwMzdiOTFlYzA1YTN8NWEjekt5d00yUFJiYWVnakthNDU',
-    ENTITY_ID: '8ac7a4c897f92ba00198037be75705a7',
-    TEST_MODE: process.env.NODE_ENV !== 'production'
+    BASE_URL: 'https://eu-prod.oppwa.com',  // Updated to production URL
+    ACCESS_TOKEN: 'OGFjOWE0Y2Q5N2VlODI1NjAxOTgxMjMxMmU4ODI0ZDN8UlkrTTdFUXJMQ0prV015OlllPSM=',
+    ENTITY_ID: '8ac9a4cd97ee825601981231c8f724df',
 };
 
 // Helper function to make HyperPay requests
@@ -55,47 +55,68 @@ const makeHyperPayRequest = (path, data = {}, method = 'POST') => {
     });
 };
 
-// Step 1: Prepare checkout (Server-to-Server)
+// Step 1: Prepare checkout (Server-to-Server) - UPDATED FOR PRODUCTION
 exports.prepareCheckout = async (req, res) => {
     try {
-        const { amount, currency = 'SAR', paymentType = 'DB', customer, billing } = req.body;
+        const { amount, customer, billing } = req.body;
 
+        // Generate unique merchantTransactionId
+        const merchantTransactionId = req.body.merchantTransactionId || `TXN_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+
+        // Validate required fields
+        if (!amount || !customer || !billing) {
+            return res.status(400).json({
+                success: false,
+                error: "Missing required fields",
+                message: "Amount, customer, and billing information are required"
+            });
+        }
+
+        // Validate customer fields
+        if (!customer.email || !customer.givenName || !customer.surname) {
+            return res.status(400).json({
+                success: false,
+                error: "Missing customer information",
+                message: "Customer email, given name, and surname are required"
+            });
+        }
+
+        // Validate billing fields
+        if (!billing.street1 || !billing.city || !billing.state || !billing.country || !billing.postcode) {
+            return res.status(400).json({
+                success: false,
+                error: "Missing billing information",
+                message: "All billing fields are required (street1, city, state, country, postcode)"
+            });
+        }
+
+        // Prepare payload for production (removed testMode and 3DS2_enrolled)
         const payload = {
             entityId: HYPERPAY_CONFIG.ENTITY_ID,
             amount: Number(amount).toFixed(2),
-            currency,
-            paymentType,
-            integrity: 'true'
+            currency: "SAR",  // Fixed to SAR as per requirements
+            paymentType: "DB", // Fixed to DB as per requirements
+            merchantTransactionId: merchantTransactionId,
+            'customer.email': customer.email,
+            'customer.givenName': customer.givenName,
+            'customer.surname': customer.surname,
+            'billing.street1': billing.street1,
+            'billing.city': billing.city,
+            'billing.state': billing.state,
+            'billing.country': billing.country, // Should be Alpha-2 code (e.g., "SA" for Saudi Arabia)
+            'billing.postcode': billing.postcode
         };
-
-        // Add customer information if provided
-        if (customer) {
-            if (customer.email) payload['customer.email'] = customer.email;
-            if (customer.givenName) payload['customer.givenName'] = customer.givenName;
-            if (customer.surname) payload['customer.surname'] = customer.surname;
-        }
-
-        // Add billing information if provided
-        if (billing) {
-            if (billing.street1) payload['billing.street1'] = billing.street1;
-            if (billing.city) payload['billing.city'] = billing.city;
-            if (billing.state) payload['billing.state'] = billing.state;
-            if (billing.country) payload['billing.country'] = billing.country;
-            if (billing.postcode) payload['billing.postcode'] = billing.postcode;
-        }
 
         const response = await makeHyperPayRequest('/v1/checkouts', payload);
 
         if (response.result && response.result.code === '000.200.100') {
-            // Checkout prepared successfully - do NOT set isPaid to true yet
-            // isPaid should only be set to true after successful payment completion
-
             res.json({
                 success: true,
                 status: 'success',
-                message: 'Checkout prepared successfully with 3D Secure support',
+                message: 'Checkout prepared successfully',
                 data: {
                     checkoutId: response.id,
+                    merchantTransactionId: merchantTransactionId,
                     integrity: response.integrity,
                     ndc: response.ndc,
                     buildNumber: response.buildNumber,
@@ -123,16 +144,14 @@ exports.prepareCheckout = async (req, res) => {
     }
 };
 
-
-
-
-// Step 2 Create Checkout Form
+// Step 2: Create Checkout Form - UPDATED FOR PRODUCTION
 exports.createCheckoutForm = async (req, res) => {
     try {
         const { checkoutId } = req.params;
-        const { userId } = req.query; // Get userId from query parameters
-        console.log('userId', userId)
-        const shopperResult = `https://carwash-backend-production.up.railway.app/api/hyperpay/payment-result${userId ? '?userId=' + userId : ''}`
+        const { userId } = req.query;
+
+        // Update shopperResult URL for production
+        const shopperResult = `${process.env.BACKEND_URL || 'https://your-production-domain.com'}/api/hyperpay/payment-result${userId ? '?userId=' + userId : ''}`;
 
         if (!checkoutId) {
             return res.status(400).json({
@@ -141,7 +160,7 @@ exports.createCheckoutForm = async (req, res) => {
             });
         }
 
-        // إنشاء HTML page مع نموذج الدفع
+        // HTML page for PRODUCTION - no test cards info
         const htmlContent = `
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -194,9 +213,6 @@ exports.createCheckoutForm = async (req, res) => {
             -webkit-appearance: -apple-pay-button;
             -apple-pay-button-type: buy;
         }
-        .wpwl-apple-pay-button {
-            -webkit-appearance: -apple-pay-button !important;
-        }
         .footer {
             text-align: center;
             margin-top: 30px;
@@ -216,23 +232,24 @@ exports.createCheckoutForm = async (req, res) => {
             color: #166534;
             font-size: 14px;
         }
-        .test-info {
+        .warning-info {
             background: #fef3c7;
             border: 1px solid #f59e0b;
             border-radius: 10px;
             padding: 15px;
             margin-bottom: 20px;
         }
-        .test-info h4 {
+        .warning-info h4 {
             color: #92400e;
             margin: 0 0 10px 0;
         }
-        .test-info p {
+        .warning-info p {
             color: #92400e;
             margin: 5px 0;
             font-size: 14px;
         }
     </style>
+    <!-- PRODUCTION Widget Script -->
     <script type="text/javascript" src="https://eu-prod.oppwa.com/v1/paymentWidgets.js?checkoutId=${checkoutId}"></script>
     <script type="text/javascript" src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script>
 </head>
@@ -243,12 +260,10 @@ exports.createCheckoutForm = async (req, res) => {
             <p>أدخل بيانات بطاقتك الائتمانية لإتمام عملية الدفع</p>
         </div>
         
-        <div class="test-info">
-            <h4>🧪 بيانات الاختبار:</h4>
-            <p><strong>VISA:</strong> 4200000000000000</p>
-            <p><strong>MasterCard:</strong> 5454545454545454</p>
-            <p><strong>CVV:</strong> 123 | <strong>Expiry:</strong> 12/25</p>
-            <p><strong>Name:</strong> John Doe</p>
+        <div class="warning-info">
+            <h4>⚠️ تنبيه مهم:</h4>
+            <p>هذا نظام دفع حقيقي. سيتم خصم المبلغ من بطاقتك الائتمانية.</p>
+            <p>الحد الأدنى للاختبار: 5 ريال سعودي</p>
         </div>
         
         <div class="payment-form">
@@ -293,7 +308,6 @@ exports.createCheckoutForm = async (req, res) => {
 
         // Handle form submission
         document.querySelector('.paymentWidgets').addEventListener('submit', function(e) {
-            // Let the form submit normally to the callback URL
             console.log("Form submitted, redirecting to callback...");
         });
     </script>
@@ -313,11 +327,11 @@ exports.createCheckoutForm = async (req, res) => {
     }
 };
 
-// Step 3 Payment Result
+// Step 3: Payment Result - UPDATED FOR PRODUCTION
 exports.paymentResult = async (req, res) => {
-    console.log('ANA Hana ya john', req.query.user)
     console.log('Payment Result Request:', req.query);
-    console.log('userIddddd', req.query.userId)
+    console.log('userId', req.query.userId);
+
     try {
         const { id, resourcePath, userId } = req.query;
 
@@ -328,7 +342,7 @@ exports.paymentResult = async (req, res) => {
         const path = resourcePath;
         const queryParams = querystring.stringify({
             entityId: HYPERPAY_CONFIG.ENTITY_ID
-        })
+        });
 
         const options = {
             port: 443,
@@ -338,7 +352,7 @@ exports.paymentResult = async (req, res) => {
             headers: {
                 'Authorization': `Bearer ${HYPERPAY_CONFIG.ACCESS_TOKEN}`
             }
-        }
+        };
 
         const response = await new Promise((resolve, reject) => {
             const getRequest = require('https').request(options, function (hpRes) {
@@ -361,40 +375,34 @@ exports.paymentResult = async (req, res) => {
 
         console.log('Payment Result Response:', JSON.stringify(response, null, 2));
 
-        // Check if payment was successful - Updated with all HyperPay success codes
+        // Check if payment was successful
         const isSuccess = response.result && (
-            // Standard success codes
             response.result.code === "000.000.000" || // Transaction succeeded
             response.result.code === "000.000.100" || // successful request
-            response.result.code === "000.100.105" || // Chargeback Representment is successful
-            response.result.code === "000.100.106" || // Chargeback Representment cancellation is successful
-            response.result.code === "000.100.110" || // Request successfully processed in 'Merchant in Integrator Test Mode'
-            response.result.code === "000.100.111" || // Request successfully processed in 'Merchant in Validator Test Mode'
-            response.result.code === "000.100.112" || // Request successfully processed in 'Merchant in Connector Test Mode'
+            response.result.code === "000.100.110" || // Request successfully processed
+            response.result.code === "000.100.111" || // Request successfully processed
+            response.result.code === "000.100.112" || // Request successfully processed
             response.result.code === "000.300.000" || // Two-step transaction succeeded
             response.result.code === "000.300.100" || // Risk check successful
             response.result.code === "000.300.101" || // Risk bank account check successful
             response.result.code === "000.300.102" || // Risk report successful
             response.result.code === "000.300.103" || // Exemption check successful
             response.result.code === "000.310.100" || // Account updated
-            response.result.code === "000.310.101" || // Account updated (Credit card expired)
+            response.result.code === "000.310.101" || // Account updated
             response.result.code === "000.310.110" || // No updates found, but account is valid
-            response.result.code === "000.400.110" || // Authentication successful (frictionless flow)
-            response.result.code === "000.400.120" || // Authentication successful (data only flow)
-            response.result.code === "000.600.000" || // transaction succeeded due to external update
-            // Manual review success codes (still considered successful)
-            response.result.code === "000.400.000" || // Transaction succeeded (please review manually due to fraud suspicion)
-            response.result.code === "000.400.010" || // Transaction succeeded (please review manually due to AVS return code)
-            response.result.code === "000.400.020" || // Transaction succeeded (please review manually due to CVV return code)
-            response.result.code === "000.400.040" || // Transaction succeeded (please review manually due to amount mismatch)
-            response.result.code === "000.400.050" || // Transaction succeeded (please review manually because transaction is pending)
-            response.result.code === "000.400.060" || // Transaction succeeded (approved at merchant's risk)
-            response.result.code === "000.400.070" || // Transaction succeeded (waiting for external risk review)
-            response.result.code === "000.400.080" || // Transaction succeeded (please review manually because the service was unavailable)
-            response.result.code === "000.400.081" || // Transaction succeeded (please review manually, as the risk status not available yet due network timeout)
-            response.result.code === "000.400.082" || // Transaction succeeded (please review manually, as the risk status not available yet due processing timeout)
-            response.result.code === "000.400.090" || // Transaction succeeded (please review manually due to external risk check)
-            response.result.code === "000.400.100"    // Transaction succeeded, risk after payment rejected
+            response.result.code === "000.400.000" || // Transaction succeeded (manual review)
+            response.result.code === "000.400.010" || // Transaction succeeded (manual review)
+            response.result.code === "000.400.020" || // Transaction succeeded (manual review)
+            response.result.code === "000.400.040" || // Transaction succeeded (manual review)
+            response.result.code === "000.400.050" || // Transaction succeeded (manual review)
+            response.result.code === "000.400.060" || // Transaction succeeded (manual review)
+            response.result.code === "000.400.070" || // Transaction succeeded (manual review)
+            response.result.code === "000.400.080" || // Transaction succeeded (manual review)
+            response.result.code === "000.400.090" || // Transaction succeeded (manual review)
+            response.result.code === "000.400.100" || // Transaction succeeded
+            response.result.code === "000.400.110" || // Authentication successful
+            response.result.code === "000.400.120" || // Authentication successful
+            response.result.code === "000.600.000"    // Transaction succeeded due to external update
         );
 
         // Update user's isPaid status if payment was successful
@@ -402,13 +410,14 @@ exports.paymentResult = async (req, res) => {
             try {
                 const User = require('../user/user.model');
                 await User.findByIdAndUpdate(userId, { isPaid: true });
-                console.log(`✅ Updated user ${userId} isPaid status to true in payment result`);
+                console.log(`✅ Updated user ${userId} isPaid status to true`);
             } catch (userUpdateError) {
-                console.error('❌ Error updating user isPaid status in payment result:', userUpdateError);
+                console.error('❌ Error updating user isPaid status:', userUpdateError);
             }
-        } else if (isSuccess) {
-            console.log('✅ Payment successful but no userId provided - isPaid status will be updated when user accesses their profile');
         }
+
+        // Updated redirect URLs for production
+        const frontendUrl = process.env.FRONTEND_URL || 'https://your-production-domain.com';
 
         const html = `
             <!DOCTYPE html>
@@ -474,53 +483,52 @@ exports.paymentResult = async (req, res) => {
                     
                     <div style="margin-top: 30px;">
                         ${isSuccess ?
-                '<a href="' + (process.env.FRONTEND_URL || 'http://localhost:3000') + '/qr-generated/' + '" class="btn">العودة للتطبيق</a>' :
-                '<a href="' + (process.env.FRONTEND_URL || 'http://localhost:3000') + '/payment-form/' + id + '?status=failed&checkoutId=' + id + (userId ? '&userId=' + userId : '') + '" class="btn">العودة للتطبيق</a>'
+                `<a href="${frontendUrl}/qr-generated/" class="btn">العودة للتطبيق</a>` :
+                `<a href="${frontendUrl}/payment-form/${id}?status=failed&checkoutId=${id}${userId ? '&userId=' + userId : ''}" class="btn">العودة للتطبيق</a>`
             }
                     </div>
                 </div>
             </body>
             </html>
-            `;
+        `;
 
         res.send(html);
 
     } catch (error) {
-        console.log('Payment Result Error', error)
+        console.error('Payment Result Error:', error);
+        res.status(500).send('Error processing payment result');
     }
-}
+};
+
 
 exports.checkStatus = async (req, res) => {
     try {
-        const { checkoutId } = req.query;
-
-        console.log("🔍 Checking payment status:", checkoutId);
-
-        if (!checkoutId) {
+        const { paymentId } = req.params;
+        
+        if (!paymentId) {
             return res.status(400).json({
                 success: false,
-                error: "معرف الدفع مطلوب"
+                error: 'Payment ID is required'
             });
         }
 
-        // Query HyperPay to get payment status
-        const path = `/v1/checkouts/${checkoutId}/payment`;
+        const path = `/v1/payments/${paymentId}`;
         const queryParams = querystring.stringify({
-            entityId: HYPERPAY_CONFIG.ENTITY_ID
+            entityId: HYPERPAY_CONFIG.entityId
         });
 
         const options = {
             port: 443,
-            host: HYPERPAY_CONFIG.BASE_URL.replace('https://', ''),
+            host: HYPERPAY_CONFIG.host,
             path: `${path}?${queryParams}`,
             method: "GET",
             headers: {
-                Authorization: `Bearer ${HYPERPAY_CONFIG.ACCESS_TOKEN}`
+                Authorization: `Bearer ${HYPERPAY_CONFIG.authToken}`
             }
         };
 
         const response = await new Promise((resolve, reject) => {
-            const getRequest = require('https').request(options, function (hpRes) {
+            const getRequest = https.request(options, function (hpRes) {
                 const buf = [];
                 hpRes.on("data", (chunk) => {
                     buf.push(Buffer.from(chunk));
@@ -538,424 +546,23 @@ exports.checkStatus = async (req, res) => {
             getRequest.end();
         });
 
-        console.log('Payment Status Response:', JSON.stringify(response, null, 2));
-
-        // Handle specific error cases
-        if (response.result && response.result.code === "200.300.404") {
-            return res.status(400).json({
-                success: false,
-                status: 'expired_or_invalid',
-                error: "Payment session expired or invalid checkout ID",
-                message: "The payment session has expired or the checkout ID is invalid. Please try creating a new payment.",
-                data: response
-            });
-        }
-
-        // Handle other error codes
-        if (response.result && response.result.code && response.result.code.startsWith("200.")) {
-            return res.status(400).json({
-                success: false,
-                status: 'error',
-                error: response.result.description || "Payment verification failed",
-                message: "There was an issue verifying the payment. Please try again.",
-                data: response
-            });
-        }
-
-        // Check if payment was successful - Updated with all HyperPay success codes
-        const isSuccess = response.result && (
-            // Standard success codes
-            response.result.code === "000.000.000" || // Transaction succeeded
-            response.result.code === "000.000.100" || // successful request
-            response.result.code === "000.100.105" || // Chargeback Representment is successful
-            response.result.code === "000.100.106" || // Chargeback Representment cancellation is successful
-            response.result.code === "000.100.110" || // Request successfully processed in 'Merchant in Integrator Test Mode'
-            response.result.code === "000.100.111" || // Request successfully processed in 'Merchant in Validator Test Mode'
-            response.result.code === "000.100.112" || // Request successfully processed in 'Merchant in Connector Test Mode'
-            response.result.code === "000.200.100" || // Checkout created successfully
-            response.result.code === "000.300.000" || // Two-step transaction succeeded
-            response.result.code === "000.300.100" || // Risk check successful
-            response.result.code === "000.300.101" || // Risk bank account check successful
-            response.result.code === "000.300.102" || // Risk report successful
-            response.result.code === "000.300.103" || // Exemption check successful
-            response.result.code === "000.310.100" || // Account updated
-            response.result.code === "000.310.101" || // Account updated (Credit card expired)
-            response.result.code === "000.310.110" || // No updates found, but account is valid
-            response.result.code === "000.400.110" || // Authentication successful (frictionless flow)
-            response.result.code === "000.400.120" || // Authentication successful (data only flow)
-            response.result.code === "000.600.000" || // transaction succeeded due to external update
-            // Manual review success codes (still considered successful)
-            response.result.code === "000.400.000" || // Transaction succeeded (please review manually due to fraud suspicion)
-            response.result.code === "000.400.010" || // Transaction succeeded (please review manually due to AVS return code)
-            response.result.code === "000.400.020" || // Transaction succeeded (please review manually due to CVV return code)
-            response.result.code === "000.400.040" || // Transaction succeeded (please review manually due to amount mismatch)
-            response.result.code === "000.400.050" || // Transaction succeeded (please review manually because transaction is pending)
-            response.result.code === "000.400.060" || // Transaction succeeded (approved at merchant's risk)
-            response.result.code === "000.400.070" || // Transaction succeeded (waiting for external risk review)
-            response.result.code === "000.400.080" || // Transaction succeeded (please review manually because the service was unavailable)
-            response.result.code === "000.400.081" || // Transaction succeeded (please review manually, as the risk status not available yet due network timeout)
-            response.result.code === "000.400.082" || // Transaction succeeded (please review manually, as the risk status not available yet due processing timeout)
-            response.result.code === "000.400.090" || // Transaction succeeded (please review manually due to external risk check)
-            response.result.code === "000.400.100"    // Transaction succeeded, risk after payment rejected
-        );
-
-        // Update user's isPaid status if payment was successful and user is authenticated
-        if (isSuccess && req.user) {
-            try {
-                const User = require('../user/user.model');
-                await User.findByIdAndUpdate(req.user._id, { isPaid: true });
-                console.log(`✅ Updated user ${req.user._id} isPaid status to true in checkStatus`);
-            } catch (userUpdateError) {
-                console.error('❌ Error updating user isPaid status in checkStatus:', userUpdateError);
-            }
-        }
+        const successCodes = ["000.000.000", "000.100.110", "000.100.111", "000.100.112"];
+        const isSuccess = response.result && successCodes.includes(response.result.code);
 
         res.json({
             success: true,
+            paymentId: paymentId,
             status: isSuccess ? 'success' : 'failed',
             data: response,
             message: isSuccess ? 'Payment successful' : 'Payment failed or pending'
         });
 
-    } catch (err) {
-        console.error('Payment status error:', err);
+    } catch (error) {
+        console.error('Transaction status check error:', error);
         res.status(500).json({
             success: false,
-            error: "فشل في التحقق من حالة الدفع",
-            details: err.message
+            error: 'Failed to check transaction status',
+            details: error.message
         });
     }
-};
-
-/**
- * معالجة callback الدفع
- */
-exports.paymentCallback = async (req, res) => {
-    try {
-        const { resourcePath, id: checkoutId } = req.query;
-
-        console.log("🔄 Payment callback received:", { checkoutId, resourcePath });
-
-        if (!resourcePath || !checkoutId) {
-            return res.status(400).json({
-                success: false,
-                error: "بيانات الدفع غير مكتملة"
-            });
-        }
-
-        // التحقق من حالة الدفع
-        const queryParams = querystring.stringify({
-            entityId: HYPERPAY_CONFIG.ENTITY_ID
-        });
-
-        const options = {
-            port: 443,
-            host: HYPERPAY_CONFIG.BASE_URL.replace('https://', ''),
-            path: `${resourcePath}?${queryParams}`,
-            method: "GET",
-            headers: {
-                Authorization: `Bearer ${HYPERPAY_CONFIG.ACCESS_TOKEN}`
-            }
-        };
-
-        const response = await new Promise((resolve, reject) => {
-            const getRequest = require('https').request(options, function (hpRes) {
-                const buf = [];
-                hpRes.on("data", (chunk) => {
-                    buf.push(Buffer.from(chunk));
-                });
-                hpRes.on("end", () => {
-                    const jsonString = Buffer.concat(buf).toString("utf8");
-                    try {
-                        resolve(JSON.parse(jsonString));
-                    } catch (error) {
-                        reject(error);
-                    }
-                });
-            });
-            getRequest.on("error", reject);
-            getRequest.end();
-        });
-
-        const isSuccess = response.result && (
-            // Standard success codes
-            response.result.code === "000.000.000" || // Transaction succeeded
-            response.result.code === "000.000.100" || // successful request
-            response.result.code === "000.100.105" || // Chargeback Representment is successful
-            response.result.code === "000.100.106" || // Chargeback Representment cancellation is successful
-            response.result.code === "000.100.110" || // Request successfully processed in 'Merchant in Integrator Test Mode'
-            response.result.code === "000.100.111" || // Request successfully processed in 'Merchant in Validator Test Mode'
-            response.result.code === "000.100.112" || // Request successfully processed in 'Merchant in Connector Test Mode'
-            response.result.code === "000.200.100" || // Checkout created successfully
-            response.result.code === "000.300.000" || // Two-step transaction succeeded
-            response.result.code === "000.300.100" || // Risk check successful
-            response.result.code === "000.300.101" || // Risk bank account check successful
-            response.result.code === "000.300.102" || // Risk report successful
-            response.result.code === "000.300.103" || // Exemption check successful
-            response.result.code === "000.310.100" || // Account updated
-            response.result.code === "000.310.101" || // Account updated (Credit card expired)
-            response.result.code === "000.310.110" || // No updates found, but account is valid
-            response.result.code === "000.400.110" || // Authentication successful (frictionless flow)
-            response.result.code === "000.400.120" || // Authentication successful (data only flow)
-            response.result.code === "000.600.000" || // transaction succeeded due to external update
-            // Manual review success codes (still considered successful)
-            response.result.code === "000.400.000" || // Transaction succeeded (please review manually due to fraud suspicion)
-            response.result.code === "000.400.010" || // Transaction succeeded (please review manually due to AVS return code)
-            response.result.code === "000.400.020" || // Transaction succeeded (please review manually due to CVV return code)
-            response.result.code === "000.400.040" || // Transaction succeeded (please review manually due to amount mismatch)
-            response.result.code === "000.400.050" || // Transaction succeeded (please review manually because transaction is pending)
-            response.result.code === "000.400.060" || // Transaction succeeded (approved at merchant's risk)
-            response.result.code === "000.400.070" || // Transaction succeeded (waiting for external risk review)
-            response.result.code === "000.400.080" || // Transaction succeeded (please review manually because the service was unavailable)
-            response.result.code === "000.400.081" || // Transaction succeeded (please review manually, as the risk status not available yet due network timeout)
-            response.result.code === "000.400.082" || // Transaction succeeded (please review manually, as the risk status not available yet due processing timeout)
-            response.result.code === "000.400.090" || // Transaction succeeded (please review manually due to external risk check)
-            response.result.code === "000.400.100"    // Transaction succeeded, risk after payment rejected
-        );
-
-        if (isSuccess) {
-            // Redirect to payment form page with success status
-            res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-form/${checkoutId}?status=success&checkoutId=${checkoutId}`);
-        } else {
-            // Redirect to payment form page with failed status
-            res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-form/${checkoutId}?status=failed&checkoutId=${checkoutId}`);
-        }
-
-    } catch (error) {
-        console.error("❌ Error in payment callback:", error);
-        res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-form/${checkoutId}?status=error`);
-    }
-};
-
-// Handle payment success with user authentication
-exports.handlePaymentSuccess = async (req, res) => {
-    try {
-        const { checkoutId } = req.body;
-
-        if (!checkoutId) {
-            return res.status(400).json({
-                success: false,
-                message: 'Checkout ID is required'
-            });
-        }
-
-        // Verify payment status with HyperPay
-        const path = `/v1/checkouts/${checkoutId}/payment`;
-        const queryParams = querystring.stringify({
-            entityId: HYPERPAY_CONFIG.ENTITY_ID
-        });
-
-        const options = {
-            port: 443,
-            host: HYPERPAY_CONFIG.BASE_URL.replace('https://', ''),
-            path: `${path}?${queryParams}`,
-            method: "GET",
-            headers: {
-                Authorization: `Bearer ${HYPERPAY_CONFIG.ACCESS_TOKEN}`
-            }
-        };
-
-        const response = await new Promise((resolve, reject) => {
-            const getRequest = require('https').request(options, function (hpRes) {
-                const buf = [];
-                hpRes.on("data", (chunk) => {
-                    buf.push(Buffer.from(chunk));
-                });
-                hpRes.on("end", () => {
-                    const jsonString = Buffer.concat(buf).toString("utf8");
-                    try {
-                        resolve(JSON.parse(jsonString));
-                    } catch (error) {
-                        reject(error);
-                    }
-                });
-            });
-            getRequest.on("error", reject);
-            getRequest.end();
-        });
-
-        console.log('Payment Status Response:', JSON.stringify(response, null, 2));
-
-        // Handle specific error cases
-        if (response.result && response.result.code === "200.300.404") {
-            return res.status(400).json({
-                success: false,
-                status: 'expired_or_invalid',
-                error: "Payment session expired or invalid checkout ID",
-                message: "The payment session has expired or the checkout ID is invalid. Please try creating a new payment.",
-                data: {
-                    checkoutId,
-                    paymentStatus: 'expired_or_invalid',
-                    userId: req.user._id
-                }
-            });
-        }
-
-        // Handle other error codes
-        if (response.result && response.result.code && response.result.code.startsWith("200.")) {
-            return res.status(400).json({
-                success: false,
-                status: 'error',
-                error: response.result.description || "Payment verification failed",
-                message: "There was an issue verifying the payment. Please try again.",
-                data: {
-                    checkoutId,
-                    paymentStatus: 'error',
-                    userId: req.user._id
-                }
-            });
-        }
-
-        // Check if payment was successful - Updated with all HyperPay success codes
-        const isSuccess = response.result && (
-            // Standard success codes
-            response.result.code === "000.000.000" || // Transaction succeeded
-            response.result.code === "000.000.100" || // successful request
-            response.result.code === "000.100.105" || // Chargeback Representment is successful
-            response.result.code === "000.100.106" || // Chargeback Representment cancellation is successful
-            response.result.code === "000.100.110" || // Request successfully processed in 'Merchant in Integrator Test Mode'
-            response.result.code === "000.100.111" || // Request successfully processed in 'Merchant in Validator Test Mode'
-            response.result.code === "000.100.112" || // Request successfully processed in 'Merchant in Connector Test Mode'
-            response.result.code === "000.200.100" || // Checkout created successfully
-            response.result.code === "000.300.000" || // Two-step transaction succeeded
-            response.result.code === "000.300.100" || // Risk check successful
-            response.result.code === "000.300.101" || // Risk bank account check successful
-            response.result.code === "000.300.102" || // Risk report successful
-            response.result.code === "000.300.103" || // Exemption check successful
-            response.result.code === "000.310.100" || // Account updated
-            response.result.code === "000.310.101" || // Account updated (Credit card expired)
-            response.result.code === "000.310.110" || // No updates found, but account is valid
-            response.result.code === "000.400.110" || // Authentication successful (frictionless flow)
-            response.result.code === "000.400.120" || // Authentication successful (data only flow)
-            response.result.code === "000.600.000" || // transaction succeeded due to external update
-            // Manual review success codes (still considered successful)
-            response.result.code === "000.400.000" || // Transaction succeeded (please review manually due to fraud suspicion)
-            response.result.code === "000.400.010" || // Transaction succeeded (please review manually due to AVS return code)
-            response.result.code === "000.400.020" || // Transaction succeeded (please review manually due to CVV return code)
-            response.result.code === "000.400.040" || // Transaction succeeded (please review manually due to amount mismatch)
-            response.result.code === "000.400.050" || // Transaction succeeded (please review manually because transaction is pending)
-            response.result.code === "000.400.060" || // Transaction succeeded (approved at merchant's risk)
-            response.result.code === "000.400.070" || // Transaction succeeded (waiting for external risk review)
-            response.result.code === "000.400.080" || // Transaction succeeded (please review manually because the service was unavailable)
-            response.result.code === "000.400.081" || // Transaction succeeded (please review manually, as the risk status not available yet due network timeout)
-            response.result.code === "000.400.082" || // Transaction succeeded (please review manually, as the risk status not available yet due processing timeout)
-            response.result.code === "000.400.090" || // Transaction succeeded (please review manually due to external risk check)
-            response.result.code === "000.400.100"    // Transaction succeeded, risk after payment rejected
-        );
-
-        if (isSuccess) {
-            // Update user's isPaid status to true
-            if (req.user && req.user._id) {
-                try {
-                    const User = require('../user/user.model');
-                    await User.findByIdAndUpdate(req.user._id, { isPaid: true });
-                    console.log(`✅ Updated user ${req.user._id} isPaid status to true after payment success verification`);
-                } catch (userUpdateError) {
-                    console.error('❌ Error updating user isPaid status after payment success verification:', userUpdateError);
-                }
-            }
-
-            res.json({
-                success: true,
-                message: 'Payment verified and user status updated successfully',
-                data: {
-                    checkoutId,
-                    paymentStatus: 'success',
-                    userId: req.user._id,
-                    isPaid: true
-                }
-            });
-        } else {
-            res.status(400).json({
-                success: false,
-                message: 'Payment verification failed',
-                data: {
-                    checkoutId,
-                    paymentStatus: 'failed',
-                    userId: req.user._id
-                }
-            });
-        }
-
-    } catch (error) {
-        console.error('❌ Error in handlePaymentSuccess:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Internal server error during payment verification',
-            error: error.message
-        });
-    }
-};
-
-// Create fresh checkout when session expires
-exports.createFreshCheckout = async (req, res) => {
-    try {
-        const { amount, currency = 'SAR', paymentType = 'DB', customer, billing } = req.body;
-
-        console.log('🔄 Creating fresh checkout due to expired session:', {
-            amount,
-            currency,
-            paymentType,
-            customer: customer ? 'provided' : 'not provided',
-            billing: billing ? 'provided' : 'not provided'
-        });
-
-        const payload = {
-            entityId: HYPERPAY_CONFIG.ENTITY_ID,
-            amount: Number(amount).toFixed(2),
-            currency,
-            paymentType,
-            integrity: 'true'
-        };
-
-        // Add customer information if provided
-        if (customer) {
-            if (customer.email) payload['customer.email'] = customer.email;
-            if (customer.givenName) payload['customer.givenName'] = customer.givenName;
-            if (customer.surname) payload['customer.surname'] = customer.surname;
-        }
-
-        // Add billing information if provided
-        if (billing) {
-            if (billing.street1) payload['billing.street1'] = billing.street1;
-            if (billing.city) payload['billing.city'] = billing.city;
-            if (billing.state) payload['billing.state'] = billing.state;
-            if (billing.country) payload['billing.country'] = billing.country;
-            if (billing.postcode) payload['billing.postcode'] = billing.postcode;
-        }
-
-        const response = await makeHyperPayRequest('/v1/checkouts', payload);
-
-        if (response.result && response.result.code === '000.200.100') {
-            res.json({
-                success: true,
-                status: 'fresh_checkout_created',
-                message: 'Fresh checkout created successfully',
-                data: {
-                    checkoutId: response.id,
-                    integrity: response.integrity,
-                    ndc: response.ndc,
-                    buildNumber: response.buildNumber,
-                    timestamp: response.timestamp
-                }
-            });
-        } else {
-            res.status(400).json({
-                success: false,
-                status: 'failed',
-                message: 'Failed to create fresh checkout',
-                error: response.result?.description || 'Unknown error',
-                data: response
-            });
-        }
-
-    } catch (error) {
-        console.error('❌ Create fresh checkout error:', error);
-        res.status(500).json({
-            success: false,
-            status: 'error',
-            message: 'Internal server error during fresh checkout creation',
-            error: error.message
-        });
-    }
-};
+}
