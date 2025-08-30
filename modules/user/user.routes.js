@@ -52,7 +52,7 @@ router.get('/available-packages', auth, userController.getAvailablePackages);
 router.get('/package-qr-code', auth, userController.generatePackageQRCode);
 
 // Use one wash from package
-router.post('/use-wash', auth, userController.useWash);
+router.post('/use-wash', userController.useWash);
 
 // Scan QR code and use wash (for staff/admin)
 router.post('/scan-qr-code', auth, userController.scanQRCode);

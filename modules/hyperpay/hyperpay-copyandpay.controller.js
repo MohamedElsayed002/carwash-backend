@@ -263,7 +263,6 @@ exports.createCheckoutForm = async (req, res) => {
         <div class="warning-info">
             <h4>⚠️ تنبيه مهم:</h4>
             <p>هذا نظام دفع حقيقي. سيتم خصم المبلغ من بطاقتك الائتمانية.</p>
-            <p>الحد الأدنى للاختبار: 5 ريال سعودي</p>
         </div>
         
         <div class="payment-form">
@@ -504,7 +503,7 @@ exports.paymentResult = async (req, res) => {
 exports.checkStatus = async (req, res) => {
     try {
         const { paymentId } = req.params;
-        
+
         if (!paymentId) {
             return res.status(400).json({
                 success: false,

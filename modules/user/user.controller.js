@@ -905,8 +905,9 @@ exports.generatePackageQRCode = async (req, res) => {
 
 // POST /api/user/use-wash (Use one wash from package)
 exports.useWash = async (req, res) => {
+  console.log(req.query.userId)
   try {
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.query.userId);
 
     if (!user || !user.package) {
       return res.status(404).json({
