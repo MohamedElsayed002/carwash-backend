@@ -340,7 +340,7 @@ exports.createCheckoutForm = async (req, res) => {
             <form action="${shopperResult}" class="paymentWidgets" data-brands="${isApplePay ? 'APPLEPAY' : 'VISA MASTER MADA'}">
                 <div id="card-container"></div>
                 <button type="submit" class="wpwl-button wpwl-button-pay" style="background: #059669; border: none; padding: 15px; border-radius: 10px; color: white; font-size: 16px; font-weight: bold; width: 100%; margin-top: 20px;">
-                    ${isApplePay ? '🍎 ادفع باستخدام Apple Pay' : '💳 إتمام الدفع'}
+                    ${isApplePay ? 'ادفع باستخدام Apple Pay' : '💳 إتمام الدفع'}
                 </button>
             </form>
         </div>
