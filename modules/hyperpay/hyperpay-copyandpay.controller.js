@@ -3,11 +3,12 @@ const querystring = require('querystring');
 const qs = require('qs');
 const crypto = require('crypto');
 
-// HyperPay Configuration - PRODUCTION
+// HyperPay Configuration - PRODUCTION with Apple Pay
 const HYPERPAY_CONFIG = {
-    BASE_URL: 'https://eu-prod.oppwa.com',  // Updated to production URL
+    BASE_URL: 'https://eu-prod.oppwa.com',  // Production URL
     ACCESS_TOKEN: 'OGFjOWE0Y2Q5N2VlODI1NjAxOTgxMjMxMmU4ODI0ZDN8UlkrTTdFUXJMQ0prV015OlllPSM=',
-    ENTITY_ID: '8ac9a4cd97ee825601981231c8f724df',
+    ENTITY_ID: '8ac9a4cd97ee825601981231c8f724df', // Regular payments
+    APPLEPAY_ENTITY_ID: '8ac9a4c998364f7e01983b83983b2207' // Apple Pay entity ID
 };
 
 // Helper function to make HyperPay requests
@@ -55,10 +56,16 @@ const makeHyperPayRequest = (path, data = {}, method = 'POST') => {
     });
 };
 
-// Step 1: Prepare checkout (Server-to-Server) - UPDATED FOR PRODUCTION
+// Step 1: Prepare checkout (Server-to-Server) - UPDATED FOR APPLE PAY SUPPORT
 exports.prepareCheckout = async (req, res) => {
     try {
-        const { amount, customer, billing } = req.body;
+        const { amount, customer, billing, paymentMethod } = req.body;
+        
+        // Check if this is for Apple Pay
+        const isApplePay = paymentMethod === 'APPLEPAY';
+        
+        // Use appropriate entity ID based on payment method
+        const entityId = isApplePay ? HYPERPAY_CONFIG.APPLEPAY_ENTITY_ID : HYPERPAY_CONFIG.ENTITY_ID;
 
         // Generate unique merchantTransactionId
         const merchantTransactionId = req.body.merchantTransactionId || `TXN_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
@@ -90,9 +97,9 @@ exports.prepareCheckout = async (req, res) => {
             });
         }
 
-        // Prepare payload for production (removed testMode and 3DS2_enrolled)
+        // Prepare payload for production
         const payload = {
-            entityId: HYPERPAY_CONFIG.ENTITY_ID,
+            entityId: entityId,
             amount: Number(amount).toFixed(2),
             currency: "SAR",  // Fixed to SAR as per requirements
             paymentType: "DB", // Fixed to DB as per requirements
@@ -107,6 +114,8 @@ exports.prepareCheckout = async (req, res) => {
             'billing.postcode': billing.postcode
         };
 
+        console.log(`Preparing ${isApplePay ? 'Apple Pay' : 'Card'} checkout with entity ID: ${entityId}`);
+
         const response = await makeHyperPayRequest('/v1/checkouts', payload);
 
         if (response.result && response.result.code === '000.200.100') {
@@ -114,6 +123,7 @@ exports.prepareCheckout = async (req, res) => {
                 success: true,
                 status: 'success',
                 message: 'Checkout prepared successfully',
+                paymentMethod: isApplePay ? 'APPLEPAY' : 'CARD',
                 data: {
                     checkoutId: response.id,
                     merchantTransactionId: merchantTransactionId,
@@ -144,11 +154,14 @@ exports.prepareCheckout = async (req, res) => {
     }
 };
 
-// Step 2: Create Checkout Form - UPDATED FOR PRODUCTION
+// Step 2: Create Checkout Form - UPDATED WITH APPLE PAY SUPPORT
 exports.createCheckoutForm = async (req, res) => {
     try {
         const { checkoutId } = req.params;
-        const { userId } = req.query;
+        const { userId, method } = req.query;
+        
+        // Check if this is for Apple Pay
+        const isApplePay = method === 'applepay';
 
         // Update shopperResult URL for production
         const shopperResult = `${process.env.BACKEND_URL || 'https://your-production-domain.com'}/api/hyperpay/payment-result${userId ? '?userId=' + userId : ''}`;
@@ -160,7 +173,7 @@ exports.createCheckoutForm = async (req, res) => {
             });
         }
 
-        // HTML page for PRODUCTION - no test cards info
+        // HTML page for PRODUCTION with Apple Pay support
         const htmlContent = `
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -203,6 +216,7 @@ exports.createCheckoutForm = async (req, res) => {
         .payment-form {
             margin-top: 30px;
         }
+        /* Apple Pay Button Styling */
         .wpwl-form {
             max-width: 100% !important;
         }
@@ -210,7 +224,7 @@ exports.createCheckoutForm = async (req, res) => {
             font-size: 16px !important;
             display: block !important;
             width: 100% !important;
-            -webkit-appearance: -apple-pay-button;
+            -webkit-appearance: -apple-pay-button !important;
             -apple-pay-button-type: buy;
         }
         .footer {
@@ -248,34 +262,91 @@ exports.createCheckoutForm = async (req, res) => {
             margin: 5px 0;
             font-size: 14px;
         }
+        .payment-method-selector {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .payment-method-btn {
+            background: white;
+            border: 2px solid #059669;
+            color: #059669;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .payment-method-btn:hover {
+            background: #059669;
+            color: white;
+        }
+        .payment-method-btn.active {
+            background: #059669;
+            color: white;
+        }
+        .apple-pay-notice {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            color: #0369a1;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+            font-size: 14px;
+        }
+        .apple-pay-notice.show {
+            display: block;
+        }
     </style>
     <!-- PRODUCTION Widget Script -->
     <script type="text/javascript" src="https://eu-prod.oppwa.com/v1/paymentWidgets.js?checkoutId=${checkoutId}"></script>
+    <!-- Apple ID JS API for Sign in with Apple (if needed) -->
     <script type="text/javascript" src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>💳 نموذج الدفع الآمن</h1>
-            <p>أدخل بيانات بطاقتك الائتمانية لإتمام عملية الدفع</p>
+            <h1>${isApplePay ? '🍎 Apple Pay' : '💳'} نموذج الدفع الآمن</h1>
+            <p>${isApplePay ? 'ادفع بسرعة وأمان باستخدام Apple Pay' : 'أدخل بيانات بطاقتك الائتمانية لإتمام عملية الدفع'}</p>
         </div>
         
         <div class="warning-info">
             <h4>⚠️ تنبيه مهم:</h4>
-            <p>هذا نظام دفع حقيقي. سيتم خصم المبلغ من بطاقتك الائتمانية.</p>
+            <p>هذا نظام دفع حقيقي. سيتم خصم المبلغ من ${isApplePay ? 'حساب Apple Pay' : 'بطاقتك الائتمانية'}.</p>
+        </div>
+        
+        <!-- Payment Method Selection -->
+        <div class="payment-method-selector">
+            <p style="margin: 0 0 10px 0; font-weight: bold;">اختر طريقة الدفع:</p>
+            <button class="payment-method-btn ${!isApplePay ? 'active' : ''}" onclick="switchToCardPayment()">
+                💳 البطاقة الائتمانية
+            </button>
+            <button class="payment-method-btn ${isApplePay ? 'active' : ''}" onclick="switchToApplePay()">
+                🍎 Apple Pay
+            </button>
+        </div>
+        
+        <!-- Apple Pay device notice -->
+        <div class="apple-pay-notice" id="applePayNotice">
+            ℹ️ Apple Pay يتطلب جهاز iOS حقيقي (iPhone, iPad) أو Mac مع Touch ID/Face ID
         </div>
         
         <div class="payment-form">
-            <form action="${shopperResult}" class="paymentWidgets" data-brands="VISA MASTER MADA">
+            <form action="${shopperResult}" class="paymentWidgets" data-brands="${isApplePay ? 'APPLEPAY' : 'VISA MASTER MADA'}">
                 <div id="card-container"></div>
                 <button type="submit" class="wpwl-button wpwl-button-pay" style="background: #059669; border: none; padding: 15px; border-radius: 10px; color: white; font-size: 16px; font-weight: bold; width: 100%; margin-top: 20px;">
-                    💳 إتمام الدفع
+                    ${isApplePay ? '🍎 ادفع باستخدام Apple Pay' : '💳 إتمام الدفع'}
                 </button>
             </form>
         </div>
         
         <div class="security-badge">
-            🔒 الدفع آمن ومشفر - HyperPay
+            🔒 الدفع آمن ومشفر - HyperPay ${isApplePay ? '+ Apple Pay' : ''}
         </div>
         
         <div class="footer">
@@ -285,6 +356,7 @@ exports.createCheckoutForm = async (req, res) => {
 
     <script>
         var wpwlOptions = {
+            ${isApplePay ? `
             applePay: {
                 displayName: "Car Wash App",
                 total: { label: "CAR WASH APP" },
@@ -293,17 +365,48 @@ exports.createCheckoutForm = async (req, res) => {
                 countryCode: "SA",
                 supportedCountries: ["SA"],
                 version: 3
-            },
+            },` : ''}
             locale: "ar",
             brandDetection: true,
             onReady: function() {
-                console.log("Payment form ready");
+                console.log("Payment form ready - Method: ${isApplePay ? 'Apple Pay' : 'Card'}");
+                ${isApplePay ? 'checkApplePaySupport();' : ''}
             },
             onError: function(error) {
                 console.error("Payment form error:", error);
                 alert("حدث خطأ في نموذج الدفع: " + error.message);
             }
         };
+        
+        // Check if device supports Apple Pay
+        function checkApplePaySupport() {
+            if (window.ApplePaySession && ApplePaySession.canMakePayments()) {
+                console.log('Apple Pay is supported on this device');
+                return true;
+            } else {
+                console.log('Apple Pay is not supported on this device');
+                document.getElementById('applePayNotice').classList.add('show');
+                return false;
+            }
+        }
+        
+        // Switch to card payment
+        function switchToCardPayment() {
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.delete('method');
+            window.location.href = currentUrl.toString();
+        }
+        
+        // Switch to Apple Pay
+        function switchToApplePay() {
+            if (!window.ApplePaySession || !ApplePaySession.canMakePayments()) {
+                alert('Apple Pay غير مدعوم على هذا الجهاز. يرجى استخدام جهاز iOS متوافق أو Mac.');
+                return;
+            }
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('method', 'applepay');
+            window.location.href = currentUrl.toString();
+        }
 
         // Handle form submission
         document.querySelector('.paymentWidgets').addEventListener('submit', function(e) {
@@ -326,7 +429,7 @@ exports.createCheckoutForm = async (req, res) => {
     }
 };
 
-// Step 3: Payment Result - UPDATED FOR PRODUCTION
+// Step 3: Payment Result - UPDATED TO HANDLE APPLE PAY
 exports.paymentResult = async (req, res) => {
     console.log('Payment Result Request:', req.query);
     console.log('userId', req.query.userId);
@@ -338,39 +441,19 @@ exports.paymentResult = async (req, res) => {
             return res.status(400).send('Missing payment parameters');
         }
 
-        const path = resourcePath;
-        const queryParams = querystring.stringify({
-            entityId: HYPERPAY_CONFIG.ENTITY_ID
-        });
-
-        const options = {
-            port: 443,
-            host: HYPERPAY_CONFIG.BASE_URL.replace('https://', ''),
-            path: `${path}?${queryParams}`,
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${HYPERPAY_CONFIG.ACCESS_TOKEN}`
-            }
-        };
-
-        const response = await new Promise((resolve, reject) => {
-            const getRequest = require('https').request(options, function (hpRes) {
-                const buf = [];
-                hpRes.on("data", (chunk) => {
-                    buf.push(Buffer.from(chunk));
-                });
-                hpRes.on("end", () => {
-                    const jsonString = Buffer.concat(buf).toString("utf8");
-                    try {
-                        resolve(JSON.parse(jsonString));
-                    } catch (error) {
-                        reject(error);
-                    }
-                });
-            });
-            getRequest.on("error", reject);
-            getRequest.end();
-        });
+        // Try regular entity ID first, then Apple Pay if that fails
+        let entityId = HYPERPAY_CONFIG.ENTITY_ID;
+        let response;
+        
+        // First attempt with regular entity ID
+        response = await checkPaymentStatus(resourcePath, entityId);
+        
+        // If no result or error, try with Apple Pay entity ID
+        if (!response || !response.result) {
+            console.log('Trying with Apple Pay entity ID...');
+            entityId = HYPERPAY_CONFIG.APPLEPAY_ENTITY_ID;
+            response = await checkPaymentStatus(resourcePath, entityId);
+        }
 
         console.log('Payment Result Response:', JSON.stringify(response, null, 2));
 
@@ -403,6 +486,8 @@ exports.paymentResult = async (req, res) => {
             response.result.code === "000.400.120" || // Authentication successful
             response.result.code === "000.600.000"    // Transaction succeeded due to external update
         );
+        
+        const isApplePay = response.paymentBrand === 'APPLEPAY';
 
         // Update user's isPaid status if payment was successful
         if (isSuccess && userId) {
@@ -467,6 +552,11 @@ exports.paymentResult = async (req, res) => {
                     .btn:hover {
                         background: #047857;
                     }
+                    .apple-pay-badge {
+                        display: inline-block;
+                        margin-right: 10px;
+                        font-size: 24px;
+                    }
                 </style>
             </head>
             <body>
@@ -475,10 +565,11 @@ exports.paymentResult = async (req, res) => {
                         ${isSuccess ? '✅' : '❌'}
                     </div>
                     <h2 class="${isSuccess ? 'success' : 'error'}">
-                        ${isSuccess ? 'تم الدفع بنجاح!' : 'فشل في الدفع'}
+                        ${isSuccess ? (isApplePay ? '🍎 تم الدفع بنجاح عبر Apple Pay!' : 'تم الدفع بنجاح!') : 'فشل في الدفع'}
                     </h2>
                     <p>معرف المعاملة: ${id}</p>
                     <p>الحالة: ${response.result.description}</p>
+                    ${response.paymentBrand ? `<p>طريقة الدفع: ${response.paymentBrand}</p>` : ''}
                     
                     <div style="margin-top: 30px;">
                         ${isSuccess ?
@@ -499,10 +590,48 @@ exports.paymentResult = async (req, res) => {
     }
 };
 
+// Helper function to check payment status
+async function checkPaymentStatus(resourcePath, entityId) {
+    const path = resourcePath;
+    const queryParams = querystring.stringify({
+        entityId: entityId
+    });
 
+    const options = {
+        port: 443,
+        host: HYPERPAY_CONFIG.BASE_URL.replace('https://', ''),
+        path: `${path}?${queryParams}`,
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${HYPERPAY_CONFIG.ACCESS_TOKEN}`
+        }
+    };
+
+    return new Promise((resolve, reject) => {
+        const getRequest = require('https').request(options, function (hpRes) {
+            const buf = [];
+            hpRes.on("data", (chunk) => {
+                buf.push(Buffer.from(chunk));
+            });
+            hpRes.on("end", () => {
+                const jsonString = Buffer.concat(buf).toString("utf8");
+                try {
+                    resolve(JSON.parse(jsonString));
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        });
+        getRequest.on("error", reject);
+        getRequest.end();
+    });
+}
+
+// Check transaction status - UPDATED FOR APPLE PAY
 exports.checkStatus = async (req, res) => {
     try {
         const { paymentId } = req.params;
+        const { entityType } = req.query; // Pass ?entityType=applepay for Apple Pay transactions
 
         if (!paymentId) {
             return res.status(400).json({
@@ -510,24 +639,26 @@ exports.checkStatus = async (req, res) => {
                 error: 'Payment ID is required'
             });
         }
+        
+        const entityId = entityType === 'applepay' ? HYPERPAY_CONFIG.APPLEPAY_ENTITY_ID : HYPERPAY_CONFIG.ENTITY_ID;
 
         const path = `/v1/payments/${paymentId}`;
         const queryParams = querystring.stringify({
-            entityId: HYPERPAY_CONFIG.entityId
+            entityId: entityId
         });
 
         const options = {
             port: 443,
-            host: HYPERPAY_CONFIG.host,
+            host: HYPERPAY_CONFIG.BASE_URL.replace('https://', ''),
             path: `${path}?${queryParams}`,
             method: "GET",
             headers: {
-                Authorization: `Bearer ${HYPERPAY_CONFIG.authToken}`
+                Authorization: `Bearer ${HYPERPAY_CONFIG.ACCESS_TOKEN}`
             }
         };
 
         const response = await new Promise((resolve, reject) => {
-            const getRequest = https.request(options, function (hpRes) {
+            const getRequest = require('https').request(options, function (hpRes) {
                 const buf = [];
                 hpRes.on("data", (chunk) => {
                     buf.push(Buffer.from(chunk));
@@ -552,6 +683,7 @@ exports.checkStatus = async (req, res) => {
             success: true,
             paymentId: paymentId,
             status: isSuccess ? 'success' : 'failed',
+            paymentMethod: response.paymentBrand,
             data: response,
             message: isSuccess ? 'Payment successful' : 'Payment failed or pending'
         });
@@ -564,4 +696,4 @@ exports.checkStatus = async (req, res) => {
             details: error.message
         });
     }
-}
+};
