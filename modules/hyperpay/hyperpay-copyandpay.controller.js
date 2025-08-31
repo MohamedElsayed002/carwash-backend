@@ -370,7 +370,7 @@ exports.createCheckoutForm = async (req, res) => {
             brandDetection: true,
             onReady: function() {
                 console.log("Payment form ready - Method: ${isApplePay ? 'Apple Pay' : 'Card'}");
-                ${isApplePay ? 'checkApplePaySupport();' : ''}
+                ${isApplePay ? '' : ''}
             },
             onError: function(error) {
                 console.error("Payment form error:", error);
@@ -378,17 +378,6 @@ exports.createCheckoutForm = async (req, res) => {
             }
         };
         
-        // Check if device supports Apple Pay
-        function checkApplePaySupport() {
-            if (window.ApplePaySession && ApplePaySession.canMakePayments()) {
-                console.log('Apple Pay is supported on this device');
-                return true;
-            } else {
-                console.log('Apple Pay is not supported on this device');
-                document.getElementById('applePayNotice').classList.add('show');
-                return false;
-            }
-        }
         
         // Switch to card payment
         function switchToCardPayment() {
@@ -399,10 +388,6 @@ exports.createCheckoutForm = async (req, res) => {
         
         // Switch to Apple Pay
         function switchToApplePay() {
-            if (!window.ApplePaySession || !ApplePaySession.canMakePayments()) {
-                alert('Apple Pay غير مدعوم على هذا الجهاز. يرجى استخدام جهاز iOS متوافق أو Mac.');
-                return;
-            }
             const currentUrl = new URL(window.location.href);
             currentUrl.searchParams.set('method', 'applepay');
             window.location.href = currentUrl.toString();
