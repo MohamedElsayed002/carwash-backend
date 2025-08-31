@@ -16,6 +16,14 @@ require("dotenv").config();
 exports.register = async (req, res) => {
   try {
     const user = new User(req.body);
+    const emailAlreadyExists = await User.findOne({ email: req.body.email });
+    const phoneAlreadyExists = await User.findOne({ phone: req.body.phone });
+    if (emailAlreadyExists) {
+      return res.status(400).json({ error: "Email already exists" });
+    }
+    if (phoneAlreadyExists) {
+      return res.status(400).json({ error: "Phone number already exists" });
+    }
     await user.save();
     res.status(201).json({ message: "User registered" });
   } catch (err) {
