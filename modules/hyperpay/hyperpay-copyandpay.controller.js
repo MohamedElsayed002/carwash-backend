@@ -60,7 +60,7 @@ const makeHyperPayRequest = (path, data = {}, method = 'POST') => {
 exports.prepareCheckout = async (req, res) => {
     try {
         const { amount, customer, billing, paymentMethod } = req.body;
-        
+        console.log('1',paymentMethod)
         // Check if this is for Apple Pay
         const isApplePay = paymentMethod === 'APPLEPAY';
         
@@ -114,6 +114,7 @@ exports.prepareCheckout = async (req, res) => {
             'billing.postcode': billing.postcode
         };
 
+        console.log('Payload',payload)
         console.log(`Preparing ${isApplePay ? 'Apple Pay' : 'Card'} checkout with entity ID: ${entityId}`);
 
         const response = await makeHyperPayRequest('/v1/checkouts', payload);
@@ -159,7 +160,9 @@ exports.createCheckoutForm = async (req, res) => {
     try {
         const { checkoutId } = req.params;
         const { userId, method } = req.query;
-        
+        console.log('checkoutId',checkoutId)
+        console.log('userId',userId)
+        console.log('method',method)
         // Check if this is for Apple Pay
         const isApplePay = method === 'applepay';
 
