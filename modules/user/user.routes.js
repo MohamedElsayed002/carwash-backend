@@ -74,6 +74,19 @@ router.post('/update-payment-status', auth, userController.updatePaymentStatus);
 router.post('/payment-success', auth, userController.handlePaymentSuccess);
 
 // ========================================
+// LOCATION MANAGEMENT ROUTES
+// ========================================
+
+// Set user's preferred wash location
+router.post('/set-location', auth, userController.setLocation);
+
+// Get user's preferred wash location
+router.get('/location', auth, userController.getLocation);
+
+// Remove user's preferred wash location
+router.delete('/location', auth, userController.removeLocation);
+
+// ========================================
 // ADMIN USER MANAGEMENT ROUTES
 // ========================================
 

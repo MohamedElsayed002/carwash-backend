@@ -1213,4 +1213,121 @@ exports.handlePaymentSuccess = async (req, res) => {
   }
 };
 
+// ========================================
+// LOCATION MANAGEMENT ENDPOINTS
+// ========================================
+
+// POST /api/user/set-location (Set user's preferred wash location)
+exports.setLocation = async (req, res) => {
+  try {
+    const locationData = req.body;
+
+    // Validate required fields
+    if (!locationData.id || !locationData.name || !locationData.address) {
+      return res.status(400).json({
+        success: false,
+        message: 'Location ID, name, and address are required'
+      });
+    }
+
+    // Validate coordinates if provided
+    if (locationData.coordinates && (!locationData.coordinates.lat || !locationData.coordinates.lng)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid coordinates (lat, lng) are required'
+      });
+    }
+
+    // Update user with location data
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { location: locationData },
+      { new: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Location set successfully',
+      data: {
+        location: user.location,
+        userId: user._id,
+        userName: user.name
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+// GET /api/user/location (Get user's preferred wash location)
+exports.getLocation = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('-password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        hasLocation: !!user.location,
+        location: user.location || null,
+        userId: user._id,
+        userName: user.name
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+// DELETE /api/user/location (Remove user's preferred wash location)
+exports.removeLocation = async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { location: null },
+      { new: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Location removed successfully',
+      data: {
+        userId: user._id,
+        userName: user.name
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
 

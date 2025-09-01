@@ -41,6 +41,29 @@ const userSchema = new mongoose.Schema({
   },
   cars: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Car' }],
   qrCode: { type: String }, // Store QR code as base64 data URL
+  location: {
+    id: { type: Number },
+    name: { type: String },
+    arabicName: { type: String },
+    address: { type: String },
+    arabicAddress: { type: String },
+    phone: { type: String },
+    coordinates: {
+      lat: { type: Number },
+      lng: { type: Number }
+    },
+    distance: { type: String },
+    capacity: { type: String },
+    rating: { type: Number },
+    reviews: { type: Number },
+    isOpen: { type: Boolean, default: true },
+    workingHours: { type: String },
+    image: { type: String },
+    mapUrl: { type: String },
+    features: [{ type: String }],
+    services: [{ type: String }],
+    specialties: [{ type: String }]
+  }
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {
