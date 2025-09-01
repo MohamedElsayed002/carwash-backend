@@ -890,6 +890,10 @@ exports.generatePackageQRCode = async (req, res) => {
       }
     });
 
+    // Save QR code to user
+    user.qrCode = qrCodeDataURL;
+    await user.save();
+
     res.json({
       success: true,
       data: {

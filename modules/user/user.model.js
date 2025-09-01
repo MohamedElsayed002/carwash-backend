@@ -40,6 +40,7 @@ const userSchema = new mongoose.Schema({
     feedbackReminders: { type: Boolean, default: true }
   },
   cars: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Car' }],
+  qrCode: { type: String }, // Store QR code as base64 data URL
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {
