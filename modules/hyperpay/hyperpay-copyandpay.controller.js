@@ -59,16 +59,23 @@ const makeHyperPayRequest = (path, data = {}, method = 'POST') => {
 // Step 1: Prepare checkout (Server-to-Server) - UPDATED FOR APPLE PAY SUPPORT
 exports.prepareCheckout = async (req, res) => {
     try {
-        const { amount, customer, billing, paymentMethod } = req.body;
-        console.log('1',paymentMethod)
-        // Check if this is for Apple Pay
+        const { amount, customer, billing, paymentMethod, paymentType } = req.body;
+
+        console.log('➡️ Payment Method:', paymentMethod);
+        console.log('➡️ Requested Payment Type:', paymentType);
+
+        // Check if this is Apple Pay
         const isApplePay = paymentMethod === 'APPLEPAY';
-        
-        // Use appropriate entity ID based on payment method
-        const entityId = isApplePay ? HYPERPAY_CONFIG.APPLEPAY_ENTITY_ID : HYPERPAY_CONFIG.ENTITY_ID;
+
+        // Select the correct entity ID
+        const entityId = isApplePay
+            ? HYPERPAY_CONFIG.APPLEPAY_ENTITY_ID
+            : HYPERPAY_CONFIG.ENTITY_ID;
 
         // Generate unique merchantTransactionId
-        const merchantTransactionId = req.body.merchantTransactionId || `TXN_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+        const merchantTransactionId =
+            req.body.merchantTransactionId ||
+            `TXN_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
 
         // Validate required fields
         if (!amount || !customer || !billing) {
@@ -89,7 +96,13 @@ exports.prepareCheckout = async (req, res) => {
         }
 
         // Validate billing fields
-        if (!billing.street1 || !billing.city || !billing.state || !billing.country || !billing.postcode) {
+        if (
+            !billing.street1 ||
+            !billing.city ||
+            !billing.state ||
+            !billing.country ||
+            !billing.postcode
+        ) {
             return res.status(400).json({
                 success: false,
                 error: "Missing billing information",
@@ -97,12 +110,15 @@ exports.prepareCheckout = async (req, res) => {
             });
         }
 
-        // Prepare payload for production
+        // Use provided paymentType or default to DB (Debit)
+        const finalPaymentType = paymentType || "DB";
+
+        // Build HyperPay payload
         const payload = {
             entityId: entityId,
             amount: Number(amount).toFixed(2),
-            currency: "SAR",  // Fixed to SAR as per requirements
-            paymentType: "DB", // Fixed to DB as per requirements
+            currency: "SAR", // Fixed currency (can be dynamic if needed)
+            paymentType: finalPaymentType,
             merchantTransactionId: merchantTransactionId,
             'customer.email': customer.email,
             'customer.givenName': customer.givenName,
@@ -110,17 +126,18 @@ exports.prepareCheckout = async (req, res) => {
             'billing.street1': billing.street1,
             'billing.city': billing.city,
             'billing.state': billing.state,
-            'billing.country': billing.country, // Should be Alpha-2 code (e.g., "SA" for Saudi Arabia)
+            'billing.country': billing.country, // must be ISO Alpha-2 (e.g. "SA")
             'billing.postcode': billing.postcode
         };
 
-        console.log('Payload',payload)
+        console.log('📝 HyperPay Payload:', payload);
         console.log(`Preparing ${isApplePay ? 'Apple Pay' : 'Card'} checkout with entity ID: ${entityId}`);
 
+        // Make request to HyperPay
         const response = await makeHyperPayRequest('/v1/checkouts', payload);
 
         if (response.result && response.result.code === '000.200.100') {
-            res.json({
+            return res.json({
                 success: true,
                 status: 'success',
                 message: 'Checkout prepared successfully',
@@ -135,7 +152,7 @@ exports.prepareCheckout = async (req, res) => {
                 }
             });
         } else {
-            res.status(400).json({
+            return res.status(400).json({
                 success: false,
                 status: 'failed',
                 message: 'Failed to prepare checkout',
@@ -143,10 +160,9 @@ exports.prepareCheckout = async (req, res) => {
                 data: response
             });
         }
-
     } catch (error) {
         console.error('❌ Prepare checkout error:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             status: 'error',
             message: 'Internal server error during checkout preparation',
@@ -155,14 +171,16 @@ exports.prepareCheckout = async (req, res) => {
     }
 };
 
+
+
 // Step 2: Create Checkout Form - UPDATED WITH APPLE PAY SUPPORT
 exports.createCheckoutForm = async (req, res) => {
     try {
         const { checkoutId } = req.params;
         const { userId, method } = req.query;
-        console.log('checkoutId',checkoutId)
-        console.log('userId',userId)
-        console.log('method',method)
+        console.log('checkoutId', checkoutId)
+        console.log('userId', userId)
+        console.log('method', method)
         // Check if this is for Apple Pay
         const isApplePay = method === 'applepay';
 
@@ -447,10 +465,10 @@ exports.paymentResult = async (req, res) => {
         // Try regular entity ID first, then Apple Pay if that fails
         let entityId = HYPERPAY_CONFIG.ENTITY_ID;
         let response;
-        
+
         // First attempt with regular entity ID
         response = await checkPaymentStatus(resourcePath, entityId);
-        
+
         // If no result or error, try with Apple Pay entity ID
         if (!response || !response.result) {
             console.log('Trying with Apple Pay entity ID...');
@@ -489,7 +507,7 @@ exports.paymentResult = async (req, res) => {
             response.result.code === "000.400.120" || // Authentication successful
             response.result.code === "000.600.000"    // Transaction succeeded due to external update
         );
-        
+
         const isApplePay = response.paymentBrand === 'APPLEPAY';
 
         // Update user's isPaid status if payment was successful
@@ -642,7 +660,7 @@ exports.checkStatus = async (req, res) => {
                 error: 'Payment ID is required'
             });
         }
-        
+
         const entityId = entityType === 'applepay' ? HYPERPAY_CONFIG.APPLEPAY_ENTITY_ID : HYPERPAY_CONFIG.ENTITY_ID;
 
         const path = `/v1/payments/${paymentId}`;
