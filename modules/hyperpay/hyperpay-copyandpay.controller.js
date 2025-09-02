@@ -332,7 +332,7 @@ exports.createCheckoutForm = async (req, res) => {
 <body>
     <div class="container">
         <div class="header">
-            <h1>${isApplePay ? '🍎 Apple Pay' : '💳'} نموذج الدفع الآمن</h1>
+            <h1>${isApplePay ? 'Apple Pay' : '💳'} نموذج الدفع الآمن</h1>
             <p>${isApplePay ? 'ادفع بسرعة وأمان باستخدام Apple Pay' : 'أدخل بيانات بطاقتك الائتمانية لإتمام عملية الدفع'}</p>
         </div>
         
@@ -348,7 +348,7 @@ exports.createCheckoutForm = async (req, res) => {
                 💳 البطاقة الائتمانية
             </button>
             <button class="payment-method-btn ${isApplePay ? 'active' : ''}" onclick="switchToApplePay()">
-                🍎 Apple Pay
+                 Apple Pay
             </button>
         </div>
         
@@ -586,7 +586,7 @@ exports.paymentResult = async (req, res) => {
                         ${isSuccess ? '✅' : '❌'}
                     </div>
                     <h2 class="${isSuccess ? 'success' : 'error'}">
-                        ${isSuccess ? (isApplePay ? '🍎 تم الدفع بنجاح عبر Apple Pay!' : 'تم الدفع بنجاح!') : 'فشل في الدفع'}
+                        ${isSuccess ? (isApplePay ? 'تم الدفع بنجاح عبر Apple Pay!' : 'تم الدفع بنجاح!') : 'فشل في الدفع'}
                     </h2>
                     <p>معرف المعاملة: ${id}</p>
                     <p>الحالة: ${response.result.description}</p>
