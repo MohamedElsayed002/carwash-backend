@@ -11,6 +11,12 @@ const HYPERPAY_CONFIG = {
     APPLEPAY_ENTITY_ID: '8ac9a4c998364f7e01983b83983b2207' // Apple Pay entity ID
 };
 
+// Helper function to validate checkoutId format
+const isValidCheckoutId = (checkoutId) => {
+    // HyperPay checkoutId format: usually starts with specific pattern
+    return checkoutId && typeof checkoutId === 'string' && checkoutId.length > 10;
+};
+
 // Helper function to make HyperPay requests
 const makeHyperPayRequest = (path, data = {}, method = 'POST') => {
     return new Promise((resolve, reject) => {
@@ -332,14 +338,10 @@ exports.createCheckoutForm = async (req, res) => {
 <body>
     <div class="container">
         <div class="header">
-            <h1>${isApplePay ? 'Apple Pay' : '💳'} نموذج الدفع الآمن</h1>
+            <h1>${isApplePay ? 'Apple Pay' : '💳'} نموذج الدفع </h1>
             <p>${isApplePay ? 'ادفع بسرعة وأمان باستخدام Apple Pay' : 'أدخل بيانات بطاقتك الائتمانية لإتمام عملية الدفع'}</p>
         </div>
         
-        <div class="warning-info">
-            <h4>⚠️ تنبيه مهم:</h4>
-            <p>هذا نظام دفع حقيقي. سيتم خصم المبلغ من ${isApplePay ? 'حساب Apple Pay' : 'بطاقتك الائتمانية'}.</p>
-        </div>
         
         <!-- Payment Method Selection -->
         <div class="payment-method-selector">
@@ -366,9 +368,6 @@ exports.createCheckoutForm = async (req, res) => {
             </form>
         </div>
         
-        <div class="security-badge">
-            🔒 الدفع آمن ومشفر - HyperPay ${isApplePay ? '+ Apple Pay' : ''}
-        </div>
         
         <div class="footer">
             <p>جميع البيانات محمية ومشفرة</p>
