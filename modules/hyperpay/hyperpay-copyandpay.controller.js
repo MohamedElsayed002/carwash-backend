@@ -334,7 +334,7 @@ exports.createCheckoutForm = async (req, res) => {
         }
     </style>
     <!-- PRODUCTION Widget Script -->
-    <script type="text/javascript" src="https://eu-prod.oppwa.com/v1/paymentWidgets.js?checkoutId=${checkoutId}"></script>
+    <script type="text/javascript" src="https://eu-prod.oppwa.com/v1/paymentWidgets.js?checkoutId=764C3E93D9CCE0D218B073AB97DDDA10.prod01-vm-tx12"></script>
     <!-- Apple ID JS API for Sign in with Apple (if needed) -->
 </head>
 <body>
