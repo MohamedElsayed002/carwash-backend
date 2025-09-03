@@ -469,7 +469,7 @@ exports.paymentResult = async (req, res) => {
 
         // First attempt with regular entity ID
         response = await checkPaymentStatus(resourcePath, entityId);
-
+        console.log('response',response)
         // If no result or error, try with Apple Pay entity ID
         if (!response || !response.result) {
             console.log('Trying with Apple Pay entity ID...');
