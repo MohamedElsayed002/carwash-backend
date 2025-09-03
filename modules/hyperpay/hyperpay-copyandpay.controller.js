@@ -199,6 +199,20 @@ exports.createCheckoutForm = async (req, res) => {
                 error: "معرف الدفع مطلوب"
             });
         }
+        // <script type="text/javascript" src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script>
+
+
+        var wpwlOptions = {
+            applePay: {
+                displayName: "MyStore",
+                total: { label: "COMPANY, INC." },
+                supportedNetworks: ["mada", "masterCard", "visa"],
+                merchantCapabilities: ["supports3DS", "supportsCredit", "supportsDebit"],
+                countryCode: "SA",
+                supportedCountries: ["SA"],
+                version: 3
+            }
+        }
 
         // HTML page for PRODUCTION with Apple Pay support
         const htmlContent = `
@@ -333,7 +347,6 @@ exports.createCheckoutForm = async (req, res) => {
     <!-- PRODUCTION Widget Script -->
     <script type="text/javascript" src="https://eu-prod.oppwa.com/v1/paymentWidgets.js?checkoutId=${checkoutId}"></script>
     <!-- Apple ID JS API for Sign in with Apple (if needed) -->
-    <script type="text/javascript" src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script>
 </head>
 <body>
     <div class="container">
@@ -717,3 +730,7 @@ exports.checkStatus = async (req, res) => {
         });
     }
 };
+
+
+// .wpwl-apple-pay-button{-webkit-appearance: -apple-pay-button !important;}
+// Make sure to add the below script as well:
