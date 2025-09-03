@@ -71,10 +71,10 @@ exports.prepareCheckout = async (req, res) => {
         console.log('➡️ Requested Payment Type:', paymentType);
 
         // Check if this is Apple Pay
-        const isApplePay = paymentMethod === 'APPLEPAY';
+        const APPLEPAY = paymentMethod === 'APPLEPAY';
 
         // Select the correct entity ID
-        const entityId = isApplePay
+        const entityId = APPLEPAY
             ? HYPERPAY_CONFIG.APPLEPAY_ENTITY_ID
             : HYPERPAY_CONFIG.ENTITY_ID;
 
@@ -137,7 +137,7 @@ exports.prepareCheckout = async (req, res) => {
         };
 
         console.log('📝 HyperPay Payload:', payload);
-        console.log(`Preparing ${isApplePay ? 'Apple Pay' : 'Card'} checkout with entity ID: ${entityId}`);
+        console.log(`Preparing ${APPLEPAY ? 'Apple Pay' : 'Card'} checkout with entity ID: ${entityId}`);
 
         // Make request to HyperPay
         const response = await makeHyperPayRequest('/v1/checkouts', payload);
@@ -147,7 +147,7 @@ exports.prepareCheckout = async (req, res) => {
                 success: true,
                 status: 'success',
                 message: 'Checkout prepared successfully',
-                paymentMethod: isApplePay ? 'APPLEPAY' : 'CARD',
+                paymentMethod: APPLEPAY ? 'APPLEPAY' : 'CARD',
                 data: {
                     checkoutId: response.id,
                     merchantTransactionId: merchantTransactionId,
@@ -188,7 +188,7 @@ exports.createCheckoutForm = async (req, res) => {
         console.log('userId', userId)
         console.log('method', method)
         // Check if this is for Apple Pay
-        const isApplePay = method === 'applepay';
+        const APPLEPAY = method === 'applepay';
 
         // Update shopperResult URL for production
         const shopperResult = `${process.env.BACKEND_URL || 'https://your-production-domain.com'}/api/hyperpay/payment-result${userId ? '?userId=' + userId : ''}`;
@@ -202,17 +202,6 @@ exports.createCheckoutForm = async (req, res) => {
         // <script type="text/javascript" src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script>
 
 
-        var wpwlOptions = {
-            applePay: {
-                displayName: "MyStore",
-                total: { label: "COMPANY, INC." },
-                supportedNetworks: ["mada", "masterCard", "visa"],
-                merchantCapabilities: ["supports3DS", "supportsCredit", "supportsDebit"],
-                countryCode: "SA",
-                supportedCountries: ["SA"],
-                version: 3
-            }
-        }
 
         // HTML page for PRODUCTION with Apple Pay support
         const htmlContent = `
@@ -351,18 +340,18 @@ exports.createCheckoutForm = async (req, res) => {
 <body>
     <div class="container">
         <div class="header">
-            <h1>${isApplePay ? 'Apple Pay' : '💳'} نموذج الدفع </h1>
-            <p>${isApplePay ? 'ادفع بسرعة وأمان باستخدام Apple Pay' : 'أدخل بيانات بطاقتك الائتمانية لإتمام عملية الدفع'}</p>
+            <h1>${APPLEPAY ? 'Apple Pay' : '💳'} نموذج الدفع </h1>
+            <p>${APPLEPAY ? 'ادفع بسرعة وأمان باستخدام Apple Pay' : 'أدخل بيانات بطاقتك الائتمانية لإتمام عملية الدفع'}</p>
         </div>
         
         
         <!-- Payment Method Selection -->
         <div class="payment-method-selector">
             <p style="margin: 0 0 10px 0; font-weight: bold;">اختر طريقة الدفع:</p>
-            <button class="payment-method-btn ${!isApplePay ? 'active' : ''}" onclick="switchToCardPayment()">
+            <button class="payment-method-btn ${!APPLEPAY ? 'active' : ''}" onclick="switchToCardPayment()">
                 💳 البطاقة الائتمانية
             </button>
-            <button class="payment-method-btn ${isApplePay ? 'active' : ''}" onclick="switchToApplePay()">
+            <button class="payment-method-btn ${APPLEPAY ? 'active' : ''}" onclick="switchToApplePay()">
                  Apple Pay
             </button>
         </div>
@@ -373,10 +362,10 @@ exports.createCheckoutForm = async (req, res) => {
         </div>
         
         <div class="payment-form">
-            <form action="${shopperResult}" class="paymentWidgets" data-brands="${isApplePay ? 'APPLEPAY' : 'VISA MASTER MADA'}">
+            <form action="${shopperResult}" class="paymentWidgets" data-brands="${APPLEPAY ? 'APPLEPAY' : 'VISA MASTER MADA'}">
                 <div id="card-container"></div>
                 <button type="submit" class="wpwl-button wpwl-button-pay" style="background: #059669; border: none; padding: 15px; border-radius: 10px; color: white; font-size: 16px; font-weight: bold; width: 100%; margin-top: 20px;">
-                    ${isApplePay ? 'ادفع باستخدام Apple Pay' : '💳 إتمام الدفع'}
+                    ${APPLEPAY ? 'ادفع باستخدام Apple Pay' : '💳 إتمام الدفع'}
                 </button>
             </form>
         </div>
@@ -389,7 +378,7 @@ exports.createCheckoutForm = async (req, res) => {
 
     <script>
         var wpwlOptions = {
-            ${isApplePay ? `
+            ${APPLEPAY ? `
             applePay: {
                 displayName: "Car Wash App",
                 total: { label: "CAR WASH APP" },
@@ -402,8 +391,8 @@ exports.createCheckoutForm = async (req, res) => {
             locale: "ar",
             brandDetection: true,
             onReady: function() {
-                console.log("Payment form ready - Method: ${isApplePay ? 'Apple Pay' : 'Card'}");
-                ${isApplePay ? 'checkApplePaySupport();' : ''}
+                console.log("Payment form ready - Method: ${APPLEPAY ? 'Apple Pay' : 'Card'}");
+                ${APPLEPAY ? 'checkApplePaySupport();' : ''}
             },
             onError: function(error) {
                 console.error("Payment form error:", error);
@@ -520,7 +509,7 @@ exports.paymentResult = async (req, res) => {
             response.result.code === "000.600.000"    // Transaction succeeded due to external update
         );
 
-        const isApplePay = response.paymentBrand === 'APPLEPAY';
+        const APPLEPAY = response.paymentBrand === 'APPLEPAY';
 
         // Update user's isPaid status if payment was successful
         if (isSuccess && userId) {
@@ -598,7 +587,7 @@ exports.paymentResult = async (req, res) => {
                         ${isSuccess ? '✅' : '❌'}
                     </div>
                     <h2 class="${isSuccess ? 'success' : 'error'}">
-                        ${isSuccess ? (isApplePay ? 'تم الدفع بنجاح عبر Apple Pay!' : 'تم الدفع بنجاح!') : 'فشل في الدفع'}
+                        ${isSuccess ? (APPLEPAY ? 'تم الدفع بنجاح عبر Apple Pay!' : 'تم الدفع بنجاح!') : 'فشل في الدفع'}
                     </h2>
                     <p>معرف المعاملة: ${id}</p>
                     <p>الحالة: ${response.result.description}</p>
