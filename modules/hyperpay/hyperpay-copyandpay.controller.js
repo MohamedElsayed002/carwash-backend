@@ -67,8 +67,8 @@ exports.prepareCheckout = async (req, res) => {
     try {
         const { amount, customer, billing, paymentMethod, paymentType } = req.body;
 
-        console.log('➡️ Payment Method:', paymentMethod);
-        console.log('➡️ Requested Payment Type:', paymentType);
+        // console.log('➡️ Payment Method:', paymentMethod);
+        // console.log('➡️ Requested Payment Type:', paymentType);
 
         // Check if this is Apple Pay
         const APPLEPAY = paymentMethod === 'APPLEPAY';
@@ -136,8 +136,8 @@ exports.prepareCheckout = async (req, res) => {
             'billing.postcode': billing.postcode
         };
 
-        console.log('📝 HyperPay Payload:', payload);
-        console.log(`Preparing ${APPLEPAY ? 'Apple Pay' : 'Card'} checkout with entity ID: ${entityId}`);
+        // console.log('📝 HyperPay Payload:', payload);
+        // console.log(`Preparing ${APPLEPAY ? 'Apple Pay' : 'Card'} checkout with entity ID: ${entityId}`);
 
         // Make request to HyperPay
         const response = await makeHyperPayRequest('/v1/checkouts', payload);
