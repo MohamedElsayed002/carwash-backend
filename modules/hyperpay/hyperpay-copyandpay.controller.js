@@ -5,7 +5,7 @@ const crypto = require('crypto');
 
 // HyperPay Configuration - PRODUCTION with Apple Pay
 const HYPERPAY_CONFIG = {
-    BASE_URL: process.env.NODE_ENV === 'production' ? 'https://eu-prod.oppwa.com' : 'https://test.oppwa.com',
+    BASE_URL: 'https://eu-prod.oppwa.com',
     ACCESS_TOKEN: 'OGFjOWE0Y2Q5N2VlODI1NjAxOTgxMjMxMmU4ODI0ZDN8UlkrTTdFUXJMQ0prV015OlllPSM=',
     ENTITY_ID: '8ac9a4cd97ee825601981231c8f724df', // Regular payments
     APPLEPAY_ENTITY_ID: '8ac9a4c998364f7e01983b83983b2207' // Apple Pay entity ID
@@ -191,7 +191,7 @@ exports.createCheckoutForm = async (req, res) => {
         const APPLEPAY = method === 'applepay';
 
         // Update shopperResult URL for production
-        const shopperResult = `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/hyperpay/payment-result${userId ? '?userId=' + userId : ''}`;
+        const shopperResult = `${process.env.APP_URL || 'http://localhost:5000'}/api/hyperpay/payment-result${userId ? '?userId=' + userId : ''}`;
 
         if (!checkoutId) {
             return res.status(400).json({
