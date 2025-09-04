@@ -4,32 +4,36 @@ const dotenv = require('dotenv');
 const { connectDB } = require('./config/db.js');
 const ejs = require('ejs');
 const engine = require('ejs-mate');
-const path = require('path');   // ✅ Add this
+const path = require('path');
 
-// Load env vars
+// Load environment variables
 dotenv.config();
 
-// Connect to DB
+// Connect to MongoDB
 connectDB();
 
 const app = express();
 
-// CORS configuration
+// Middleware & Configurations
 app.use(cors());
 app.engine('ejs', engine);
 app.set('view engine', 'ejs');
 
+// ✅ Serve static files from the .well-known directory for Apple Pay verification
+app.use('/.well-known', express.static(path.join(__dirname, '.well-known')));
+
 // ✅ Tell Express where to find views
 app.set('views', [
-  path.join(__dirname, 'views'),                        // global views (if any)
-  path.join(__dirname, 'modules/payment/views')         // payment module views
+  path.join(__dirname, 'views'),
+  path.join(__dirname, 'modules/payment/views')
 ]);
 
+// Parse JSON bodies
 app.use(express.json());
 
-// Root route
+// Root route (basic health check / welcome message)
 app.get('/', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'Welcome to PayPass Backend API! 🚀',
     version: '1.0.0',
     status: 'running',
@@ -48,24 +52,25 @@ app.get('/', (req, res) => {
 // API Routes
 app.use('/', require('./routes/index.js'));
 
-// 404 handler
+// 404 handler (when no route matches)
 app.use((req, res) => {
-  res.status(404).json({ 
+  res.status(404).json({
     error: 'Route not found',
     message: `Cannot ${req.method} ${req.originalUrl}`,
     availableRoutes: ['/', '/api', '/api/test', '/api/health']
   });
 });
 
-// Error handler
+// Global error handler
 app.use((err, req, res, next) => {
   console.error('Error:', err);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Internal server error',
-    message: err.message 
+    message: err.message
   });
 });
 
+// Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
