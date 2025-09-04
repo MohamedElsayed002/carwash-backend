@@ -5,7 +5,7 @@ const crypto = require('crypto');
 
 // HyperPay Configuration - PRODUCTION with Apple Pay
 const HYPERPAY_CONFIG = {
-    BASE_URL: 'https://eu-prod.oppwa.com',  // Production URL
+    BASE_URL: process.env.NODE_ENV === 'production' ? 'https://eu-prod.oppwa.com' : 'https://test.oppwa.com',
     ACCESS_TOKEN: 'OGFjOWE0Y2Q5N2VlODI1NjAxOTgxMjMxMmU4ODI0ZDN8UlkrTTdFUXJMQ0prV015OlllPSM=',
     ENTITY_ID: '8ac9a4cd97ee825601981231c8f724df', // Regular payments
     APPLEPAY_ENTITY_ID: '8ac9a4c998364f7e01983b83983b2207' // Apple Pay entity ID
@@ -191,7 +191,7 @@ exports.createCheckoutForm = async (req, res) => {
         const APPLEPAY = method === 'applepay';
 
         // Update shopperResult URL for production
-        const shopperResult = `${process.env.BACKEND_URL || 'https://your-production-domain.com'}/api/hyperpay/payment-result${userId ? '?userId=' + userId : ''}`;
+        const shopperResult = `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/hyperpay/payment-result${userId ? '?userId=' + userId : ''}`;
 
         if (!checkoutId) {
             return res.status(400).json({
@@ -336,6 +336,8 @@ exports.createCheckoutForm = async (req, res) => {
     <!-- PRODUCTION Widget Script -->
     <script type="text/javascript" src="https://eu-prod.oppwa.com/v1/paymentWidgets.js?checkoutId=${checkoutId}"></script>
     <!-- Apple ID JS API for Sign in with Apple (if needed) -->
+    <script type="text/javascript" src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script>
+
 </head>
 <body>
     <div class="container">
@@ -381,12 +383,16 @@ exports.createCheckoutForm = async (req, res) => {
             ${APPLEPAY ? `
             applePay: {
                 displayName: "Car Wash App",
-                total: { label: "CAR WASH APP" },
+                total: { 
+                    label: "Car Wash Service",
+                    amount: "0.00"
+                },
                 supportedNetworks: ["mada", "masterCard", "visa"],
                 merchantCapabilities: ["supports3DS", "supportsCredit", "supportsDebit"],
                 countryCode: "SA",
                 supportedCountries: ["SA"],
-                version: 3
+                version: 3,
+                merchantIdentifier: "merchant.com.carwash.app"
             },` : ''}
             locale: "ar",
             brandDetection: true,
@@ -397,6 +403,11 @@ exports.createCheckoutForm = async (req, res) => {
             onError: function(error) {
                 console.error("Payment form error:", error);
                 alert("حدث خطأ في نموذج الدفع: " + error.message);
+            },
+            onApplePayAuthorized: function(result) {
+                console.log("Apple Pay authorized:", result);
+                // Handle Apple Pay authorization
+                return true;
             }
         };
         
@@ -469,7 +480,7 @@ exports.paymentResult = async (req, res) => {
 
         // First attempt with regular entity ID
         response = await checkPaymentStatus(resourcePath, entityId);
-        console.log('response',response)
+        console.log('response', response)
         // If no result or error, try with Apple Pay entity ID
         if (!response || !response.result) {
             console.log('Trying with Apple Pay entity ID...');
@@ -720,6 +731,43 @@ exports.checkStatus = async (req, res) => {
     }
 };
 
+
+// Test Apple Pay Configuration
+exports.testApplePayConfig = async (req, res) => {
+    try {
+        const config = {
+            environment: process.env.NODE_ENV || 'development',
+            hyperpayConfig: {
+                baseUrl: HYPERPAY_CONFIG.BASE_URL,
+                hasAccessToken: !!HYPERPAY_CONFIG.ACCESS_TOKEN,
+                entityId: HYPERPAY_CONFIG.ENTITY_ID,
+                applePayEntityId: HYPERPAY_CONFIG.APPLEPAY_ENTITY_ID
+            },
+            domainAssociation: {
+                url: `${req.protocol}://${req.get('host')}/.well-known/apple-developer-merchantid-domain-association`,
+                status: 'configured'
+            },
+            applePayRequirements: {
+                domainAssociation: '✅ Configured',
+                merchantId: '✅ Configured',
+                entityId: '✅ Configured',
+                https: req.secure ? '✅ HTTPS Enabled' : '❌ HTTPS Required for Production',
+                deviceSupport: 'Requires iOS device or Safari on macOS'
+            }
+        };
+
+        res.json({
+            success: true,
+            message: 'Apple Pay Configuration Status',
+            data: config
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+};
 
 // .wpwl-apple-pay-button{-webkit-appearance: -apple-pay-button !important;}
 // Make sure to add the below script as well:

@@ -19,8 +19,6 @@ app.use(cors());
 app.engine('ejs', engine);
 app.set('view engine', 'ejs');
 
-// ✅ Serve static files from the .well-known directory for Apple Pay verification
-app.use('/.well-known', express.static(path.join(__dirname, '.well-known')));
 
 // ✅ Tell Express where to find views
 app.set('views', [
@@ -45,6 +43,28 @@ app.get('/', (req, res) => {
       cars: '/api/cars',
       packages: '/api/packages',
       payments: '/api/payments'
+    }
+  });
+});
+
+// Apple Pay Domain Association Route
+app.get('/.well-known/apple-developer-merchantid-domain-association', (req, res) => {
+  const path = require('path');
+  const filePath = path.join(__dirname, 'apple-developer-merchantid-domain-association.txt');
+
+  // Set proper headers for Apple Pay
+  res.setHeader('Content-Type', 'text/plain');
+  res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      console.error('❌ Error serving Apple Developer Merchant ID file:', err);
+      res.status(404).json({
+        error: 'Apple Developer Merchant ID file not found',
+        message: 'This endpoint is required for Apple Pay integration'
+      });
+    } else {
+      console.log('✅ Apple Developer Merchant ID file served successfully');
     }
   });
 });
