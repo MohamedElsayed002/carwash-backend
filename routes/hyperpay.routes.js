@@ -7,7 +7,6 @@ router.post('/prepare-checkout-copyandpay', auth, hyperpayCopyandpayController.p
 router.get('/create-checkout-form/:checkoutId', hyperpayCopyandpayController.createCheckoutForm);
 router.get('/payment-result', hyperpayCopyandpayController.paymentResult)
 router.get('/check-status', auth, hyperpayCopyandpayController.checkStatus);
-router.get('/test-apple-pay-config', hyperpayCopyandpayController.testApplePayConfig);
 
 
 
