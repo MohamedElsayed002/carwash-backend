@@ -13,7 +13,7 @@ exports.createFeedback = async (req, res) => {
 
 exports.getFeedbacks = async (req, res) => {
   try {
-    const feedbacks = await Feedback.find().populate("user");
+    const feedbacks = await Feedback.find().populate("user","name email phone isPaid");
     res.json(feedbacks);
   } catch (err) {
     res.status(500).json({ error: err.message });
