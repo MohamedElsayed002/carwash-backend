@@ -102,6 +102,8 @@ exports.useWash = async (req, res) => {
 
     // If no washes left, mark as used
     if (userPackage.washesLeft === 0) {
+      await User.findByIdAndUpdate(req.user._id, { isPaid: false });
+      console.log(`✅ Updated user ${req.user._id} isPaid status to false after package expiration`);
       userPackage.status = 'used';
     }
 
